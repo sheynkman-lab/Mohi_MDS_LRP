@@ -1,0 +1,36 @@
+To use your local R packages in RStudio, run:
+echo "R_LIBS_USER=~/R/goolf/4.3" > ~/.Renviron
+
+The following have been reloaded with a version change:
+  1) python/.3.11.4 => python/3.11.4
+
+Rscript (R) version 4.3.1 (2023-06-16)
+WARNING: output directory /sfs/gpfs/tardis/project/sheynkman/projects/mohi_MDS/02_sqanti already exists. Overwriting!
+Error corrected FASTA /sfs/gpfs/tardis/project/sheynkman/projects/mohi_MDS/02_sqanti/MDS_corrected.fasta already exists. Using it...
+WARNING: Skipping ORF prediction because user requested it. All isoforms will be non-coding!
+WARNING: All input isoforms were predicted as non-coding
+WARNING: ref annotation contains chromosomes not in genome: chr22,chr21,chr20
+
+**** Parsing Isoforms....
+Write arguments to /sfs/gpfs/tardis/project/sheynkman/projects/mohi_MDS/02_sqanti/MDS.params.txt...
+**** Running SQANTI3...
+**** Parsing provided files....
+Reading genome fasta /project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa....
+**** Predicting ORF sequences...
+**** Parsing Reference Transcriptome....
+/sfs/gpfs/tardis/project/sheynkman/projects/mohi_MDS/02_sqanti/refAnnotation_MDS.genePred already exists. Using it.
+Splice Junction Coverage files not provided.
+**** TSS ratio will not be calculated since SR information was not provided
+**** Performing Classification of Isoforms....
+Traceback (most recent call last):
+  File "/project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py", line 2541, in <module>
+    main()
+  File "/project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py", line 2524, in main
+    run(args)
+  File "/project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py", line 1887, in run
+    isoforms_info, ratio_TSS_dict = isoformClassification(args, isoforms_by_chr, refs_1exon_by_chr, refs_exons_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene, genome_dict, indelsJunc, orfDict, corrGTF)
+  File "/project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py", line 1620, in isoformClassification
+    isoform_hit = transcriptsKnownSpliceSites(isoform_hits_name, refs_1exon_by_chr, refs_exons_by_chr, start_ends_by_gene, rec, genome_dict, nPolyA=args.window)
+  File "/project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py", line 951, in transcriptsKnownSpliceSites
+    seq_downTTS = str(genome_dict[trec.chrom].seq[pos_TTS-nPolyA:pos_TTS].reverse_complement()).upper()
+KeyError: 'chr20'
