@@ -1,3 +1,7 @@
+# MDS Project
+This project is comparing protein isoforms identified by long-read proteogenomics between wild type and mutant model mice. The goal is to identify novel isoforms and quantify the changes in isoform expression between the two groups. <br />
+The IsoSeq tool is not yet equipped to run multiple samples and demultiplex them, so I am running the pipeline twice - one on 3 mutant model samples and one on 3 wild type samples. The results will be in folders called `wild_type` and `disease` <br />
+I ran the script on all samples first, and the output is in a separate folder called `all_samples`, and the slurm script for running these together are in `00_scripts/all_samples`. <br />
 ## After each working session, push changes to GitHub
 ```
 git status
@@ -26,7 +30,9 @@ cd Mohi_MDS_LRP
 cd /project/sheynkman/projects/Mohi_MDS_LRP
 ```
 ## 1 - Run Isoseq
-It looks like I will need to run isoseq3 on each sample then demultiplex (or actually mutliplex?) the samples before moving on to SQANTI. The roadmap for this is in `/projects/smc_proteogenomics/pacbio_analysis_full` and https://github.com/sheynkman-lab/IsoSeq-Nextflow/tree/main 
+It looks like I will need to run isoseq3 on each sample then demultiplex (or actually mutliplex?) the samples before moving on to SQANTI. The roadmap for this is in `/projects/smc_proteogenomics/pacbio_analysis_full` and https://github.com/sheynkman-lab/IsoSeq-Nextflow/tree/main <br />
+Demultiplexing is paused for now after speaking with PacBio represenatatives. I am proceeding with grouping disease and wild type samples together and running the pipeline on each to compare. <br />
+The information about which samples are wild type (03, 04, and 05) and which are mutant models (06, 07, and 08) is in the IsoSeq raw data file. <br />
 ```
 sbatch 00_scripts/01_isoseq.sh
 ```
@@ -46,6 +52,7 @@ Demultiplex
 python ./00_scripts/01_demux.py -idir ./01_isoseq -odir ./01_isoseq/07_demux --name merged
 ```
 ## 1 - Make reference tables
+This module is independent of the samples and can be run once for all samples.
 ```
 sbatch ./00_scripts/01_make_reference_tables.sh
 ```
@@ -54,10 +61,11 @@ sbatch ./00_scripts/01_make_reference_tables.sh
 sbatch ./00_scripts/02_sqanti.sh
 ```
 ## 2 - Make gencode database
+This module is independent of the samples and can be run once for all samples.
 ```
 sbatch ./00_scripts/02_make_gencode_database.sh
 ```
-## 3 - Filter SQANTI3 output - skipped for mouse
+## 3 - Filter SQANTI3 output
 ```
 sbatch ./00_scripts/03_filter_sqanti.sh
 ```

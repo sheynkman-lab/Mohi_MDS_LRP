@@ -22,11 +22,22 @@ export PATH="$HOME/.local/bin:$PATH"
 
 cd /project/sheynkman/projects/mohi_MDS
 
+# Wild type
 cpat \
-   -x /project/sheynkman/external_data/CPAT_data/Human_Hexamer.tsv \
-   -d /project/sheynkman/external_data/CPAT_data/Human_logitModel.RData \
-   -g ./02_sqanti/MDS_corrected.fasta \
+   -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
+   -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
+   -g ./02_sqanti/WT_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o ./04_CPAT/MDS \
+   -o ./04_CPAT/WT \
+   2> cpat.error
+
+# Mutant
+cpat \
+   -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
+   -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
+   -g ./02_sqanti/M_corrected.fasta \
+   --min-orf=50 \
+   --top-orf=50 \
+   -o ./04_CPAT/M \
    2> cpat.error

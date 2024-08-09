@@ -24,10 +24,18 @@ cd /project/sheynkman/projects/mohi_MDS
 
 conda activate transcriptome_sum
 
+# Wild type
 python ./00_scripts/04_transcriptome_summary_gene_table_only.py \
---sq_out ./02_sqanti/MDS_classification.txt \
+--sq_out wild_type/03_filter_sqanti/WT_classification.tsv \
 --ensg_to_gene ./01_reference_tables/ensg_gene.tsv \
 --enst_to_isoname ./01_reference_tables/enst_isoname.tsv \
---odir ./04_transcriptome_summary/
+--odir wild_type/04_transcriptome_summary/
+
+# Mutant
+python ./00_scripts/04_transcriptome_summary_gene_table_only.py \
+--sq_out mutant/03_filter_sqanti/M_classification.tsv \
+--ensg_to_gene ./01_reference_tables/ensg_gene.tsv \
+--enst_to_isoname ./01_reference_tables/enst_isoname.tsv \
+--odir mutant/04_transcriptome_summary/
 
 conda deactivate

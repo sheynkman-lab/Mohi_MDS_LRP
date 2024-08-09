@@ -29,15 +29,25 @@ chmod +x /project/sheynkman/programs/SQANTI3-5.2/utilities/gtfToGenePred
 export PYTHONPATH=$PYTHONPATH:/project/sheynkman/programs/SQANTI3-5.2/cDNA_Cupcake/sequence/
 export PYTHONPATH=$PYTHONPATH:/project/sheynkman/programs/SQANTI3-5.2/cDNA_Cupcake/
 
-
+# Wild type
 python /project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py \
-./01_isoseq/06_collapse/merged.collapsed.gff \
+wild_type/01_isoseq/06_collapse/WT.merged.collapsed.gff \
 /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
 /project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa \
 --skipORF \
--o MDS \
--d 02_sqanti/ \
---fl_count ./01_isoseq/06_collapse/merged.collapsed.abundance.txt
+-o WT \
+-d wild_type/02_sqanti/ \
+--fl_count wild_type/01_isoseq/06_collapse/WT.merged.collapsed.abundance.txt
+
+# Mutant
+python /project/sheynkman/programs/SQANTI3-5.2/sqanti3_qc.py \
+mutant/01_isoseq/06_collapse/M.merged.collapsed.gff \
+/project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
+/project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa \
+--skipORF \
+-o M \
+-d mutant/02_sqanti/ \
+--fl_count mutant/01_isoseq/06_collapse/M.merged.collapsed.abundance.txt
 
         
 conda deactivate 

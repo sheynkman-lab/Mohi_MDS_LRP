@@ -32,16 +32,31 @@ cd /project/sheynkman/projects/mohi_MDS
 
 conda activate isoseq_env
 
+# Wild type
 # Merge SMRT cells
-ls ./00_input_data/flnc/*.flnc.bam > ./01_isoseq/flnc.fofn
+ls ./00_input_data/wild_type/*.flnc.bam > ./01_isoseq/wild_type_flnc.fofn
 
 # Cluster reads
-isoseq3 cluster ./00_input_data/flnc/flnc.fofn ./01_isoseq/04_cluster/merged.clustered.bam --verbose --use-qvs
+isoseq3 cluster ./00_input_data/flnc/wild_type_flnc.fofn ./wild_type/01_isoseq/04_cluster/WT.merged.clustered.bam --verbose --use-qvs
 
 # Align reads to the genome 
-pbmm2 align /project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa ./01_isoseq/done/04_cluster/merged.clustered.hq.bam ./01_isoseq/05_align/merged.aligned.bam --preset ISOSEQ --sort -j 40 --log-level INFO
+pbmm2 align /project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa ./wild_type/01_isoseq/04_cluster/WT.merged.clustered.hq.bam ./01_isoseq/05_align/WT.merged.aligned.bam --preset ISOSEQ --sort -j 40 --log-level INFO
 
 # Collapse redundant reads
-isoseq3 collapse ./01_isoseq/05_align/merged.aligned.bam ./01_isoseq/06_collapse/merged.collapsed.gff
+isoseq3 collapse ./wild_type/01_isoseq/05_align/WT.merged.aligned.bam ./wild_type/01_isoseq/06_collapse/WT.merged.collapsed.gff
+
+# Collapse redundant reads
+isoseq3 collapse ./disease/01_isoseq/05_align/D.merged.aligned.bam ./disease/01_isoseq/06_collapse/D.merged.collapsed.gff
+
+# Mutant
+# Merge SMRT cells
+ls ./00_input_data/mutant/*.flnc.bam > ./01_isoseq/mutant_flnc.fofn
+isoseq3 cluster ./00_input_data/flnc/mutant_flnc.fofn ./mutant/01_isoseq/04_cluster/M.merged.clustered.bam --verbose --use-qvs
+
+# Align reads to the genome
+pbmm2 align /project/sheynkman/external_data/GENCODE_M35/GRCm39.primary_assembly.genome.fa ./mutant/01_isoseq/04_cluster/M.merged.clustered.hq.bam ./01_isoseq/05_align/M.merged.aligned.bam --preset ISOSEQ --sort -j 40 --log-level INFO
+
+# Collapse redundant reads
+isoseq3 collapse ./mutant/01_isoseq/05_align/M.merged.aligned.bam ./mutant/01_isoseq/06_collapse/M.merged.collapsed.gff
 
 conda deactivate
