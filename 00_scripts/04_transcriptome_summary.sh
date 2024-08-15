@@ -20,20 +20,18 @@ module load anaconda/2023.07-py3.11
 module load openmpi/4.1.4
 module load python/3.11.4
 
-cd /project/sheynkman/projects/mohi_MDS
-
 conda activate transcriptome_sum
 
 # Wild type
 python ./00_scripts/04_transcriptome_summary_gene_table_only.py \
---sq_out wild_type/03_filter_sqanti/WT_classification.tsv \
+--sq_out wild_type/02_sqanti/WT_classification.txt \
 --ensg_to_gene ./01_reference_tables/ensg_gene.tsv \
 --enst_to_isoname ./01_reference_tables/enst_isoname.tsv \
 --odir wild_type/04_transcriptome_summary/
 
 # Mutant
 python ./00_scripts/04_transcriptome_summary_gene_table_only.py \
---sq_out mutant/03_filter_sqanti/M_classification.tsv \
+--sq_out mutant/02_sqanti/M_classification.txt \
 --ensg_to_gene ./01_reference_tables/ensg_gene.tsv \
 --enst_to_isoname ./01_reference_tables/enst_isoname.tsv \
 --odir mutant/04_transcriptome_summary/

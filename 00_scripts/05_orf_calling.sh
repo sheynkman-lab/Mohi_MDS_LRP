@@ -11,9 +11,6 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=yqy3cu@virginia.edu
 
-# set working directory 
-cd /project/sheynkman/projects/mohi_MDS
-
 # Load modules
 module load apptainer/1.2.2
 module load gcc/11.4.0  
@@ -26,19 +23,34 @@ module load anaconda/2023.07-py3.11
 
 conda activate orf-calling
 
-
+# Wild type
 # Command to open the container & run script
 
 apptainer exec /project/sheynkman/dockers/LRP/orf_calling_latest.sif /bin/bash -c "\
     python ./00_scripts/05_orf_calling.py \
-    --orf_coord ./04_CPAT/MDS.ORF_prob.tsv \
-    --orf_fasta ./04_CPAT/MDS.ORF_seqs.fa \
+    --orf_coord ./wild_type/04_CPAT/WT.ORF_prob.tsv \
+    --orf_fasta ./wild_type/04_CPAT/WT.ORF_seqs.fa \
     --gencode /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
-    --sample_gtf ./02_sqanti/MDS_corrected.gtf \
-    --pb_gene ./04_transcriptome_summary/pb_gene.tsv \
-    --classification ./02_sqanti/MDS_classification.txt \
-    --sample_fasta ./02_sqanti/MDS_corrected.fasta \
-    --output ./05_orf_calling/MDS_best_ORF.tsv 
+    --sample_gtf ./wild_type/02_sqanti/WT_corrected.gtf \
+    --pb_gene ./wild_type/04_transcriptome_summary/pb_gene.tsv \
+    --classification ./wild_type/02_sqanti/WT_classification.txt \
+    --sample_fasta ./wild_type/02_sqanti/WT_corrected.fasta \
+    --output ./wild_type/05_orf_calling/WT_best_ORF.tsv 
+"
+
+# Mutant
+# Command to open the container & run script
+
+apptainer exec /project/sheynkman/dockers/LRP/orf_calling_latest.sif /bin/bash -c "\
+    python ./00_scripts/05_orf_calling.py \
+    --orf_coord ./mutant/04_CPAT/M.ORF_prob.tsv \
+    --orf_fasta ./mutant/04_CPAT/M.ORF_seqs.fa \
+    --gencode /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
+    --sample_gtf ./mutant/02_sqanti/M_corrected.gtf \
+    --pb_gene ./mutant/04_transcriptome_summary/pb_gene.tsv \
+    --classification ./mutant/02_sqanti/M_classification.txt \
+    --sample_fasta ./mutant/02_sqanti/M_corrected.fasta \
+    --output ./mutant/05_orf_calling/M_best_ORF.tsv
 "
 
 # exit container & deactivate condo env

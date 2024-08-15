@@ -20,12 +20,12 @@ module load anaconda/2023.07-py3.11
 conda activate sqanti_filter
 
 # Wild type
-python ./00_scripts/03_filter_sqanti.py \
+python ./00_scripts/03_filter_sqanti_mouse.py \
     --sqanti_classification wild_type/02_sqanti/WT_classification.txt \
     --sqanti_corrected_fasta wild_type/02_sqanti/WT_corrected.fasta \
     --sqanti_corrected_gtf wild_type/02_sqanti/WT_corrected.gtf \
-    --protein_coding_genes ./01_reference_tables/protein_coding_genes.txt \
-    --ensg_gene ./01_reference_tables/ensg_gene.tsv \
+    --protein_coding_genes 01_reference_tables/protein_coding_genes.txt \
+    --ensg_gene 01_reference_tables/ensg_gene.tsv \
     --filter_protein_coding yes \
     --filter_intra_polyA yes \
     --filter_template_switching yes \
@@ -47,12 +47,12 @@ python ./00_scripts/03_collapse_classification.py \
     --output_folder wild_type/03_filter_sqanti
 
 # Mutant
-python ./00_scripts/03_filter_sqanti.py \
+python ./00_scripts/03_filter_sqanti_mouse.py \
     --sqanti_classification mutant/02_sqanti/M_classification.txt \
     --sqanti_corrected_fasta mutant/02_sqanti/M_corrected.fasta \
     --sqanti_corrected_gtf mutant/02_sqanti/M_corrected.gtf \
-    --protein_coding_genes ./01_reference_tables/protein_coding_genes.txt \
-    --ensg_gene ./01_reference_tables/ensg_gene.tsv \
+    --protein_coding_genes 01_reference_tables/protein_coding_genes.txt \
+    --ensg_gene 01_reference_tables/ensg_gene.tsv \
     --filter_protein_coding yes \
     --filter_intra_polyA yes \
     --filter_template_switching yes \

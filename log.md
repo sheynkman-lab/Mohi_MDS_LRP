@@ -66,6 +66,7 @@ This module is independent of the samples and can be run once for all samples.
 sbatch ./00_scripts/02_make_gencode_database.sh
 ```
 ## 3 - Filter SQANTI3 output
+These scripts are only made for human data, so I'm skipping for mouse data. Transcrips will be filtered further down the pipeline.
 ```
 sbatch ./00_scripts/03_filter_sqanti.sh
 ```

@@ -1,6 +1,6 @@
 00_input_data/
 all_samples/
 wild_type/
-disease/ 
+mutant/ 
 01_reference_tables/
 02_make_gencode_database/

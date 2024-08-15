@@ -4,7 +4,7 @@ import pandas as pd
 import re 
 import argparse
 import logging
-import gtfparse
+import os
 from Bio import SeqIO
 
 logging.basicConfig(filename='sqanti_filter.log', encoding='utf-8', level=logging.DEBUG) 
@@ -28,7 +28,6 @@ structural_categories = {
        'intergenic', 'fusion', 'genic_intron']
 }
 
-
 def string_to_boolean(string):
     """
     Converts string to boolean
@@ -44,14 +43,13 @@ def string_to_boolean(string):
     output boolean
     """
     if isinstance(string, bool):
-        return str
+        return string
     if string.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif string.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-
 
 def filter_protein_coding(classification, protein_coding_filename, ensg_gene_filename):
     """
@@ -60,10 +58,12 @@ def filter_protein_coding(classification, protein_coding_filename, ensg_gene_fil
     
     Parameters
     ----------
-    orfs : pandass DataFrame
+    classification : pandas DataFrame
         called ORFs
     protein_coding_filename : filename
-        file of protein-coding genes. text file seperated by lines
+        file of protein-coding genes. text file separated by lines
+    ensg_gene_filename : filename
+        file of gene IDs and names. text file separated by tabs
     """
     logging.info("Filtering for only protein coding genes")
     with open(protein_coding_filename, 'r') as file:
@@ -74,7 +74,6 @@ def filter_protein_coding(classification, protein_coding_filename, ensg_gene_fil
     protein_coding_gene_ids = set(ensg_gene['gene_id'])
     classification = classification[classification['associated_gene'].isin(protein_coding_gene_ids)]
     return classification
-
 
 def filter_intra_polyA(classification, percent_polyA_downstream):
     logging.info("Filtering Intra PolyA")
@@ -108,24 +107,25 @@ def filter_illumina_coverage(classification, min_coverage):
 
         return classification
 
-def save_filtered_sqanti_gtf(gtf_file, filtered_isoforms):
+def save_filtered_sqanti_gtf(gtf_file, filtered_isoforms, output_dir):
     logging.info("Saving GTF")
     base_name = gtf_file.split("/")[-1]
-    with open(gtf_file, "r") as ifile, open(f"filtered_{base_name}", "w") as ofile:
+    output_path = os.path.join(output_dir, f"filtered_{base_name}")
+    with open(gtf_file, "r") as ifile, open(output_path, "w") as ofile:
         for line in ifile.readlines():
             transcript = re.findall('transcript_id "([^"]*)"', line)[0]
             if transcript in filtered_isoforms:
                 ofile.write(line)
 
-
-def save_filtered_sqanti_fasta(fasta_file, filtered_isoforms):
+def save_filtered_sqanti_fasta(fasta_file, filtered_isoforms, output_dir):
     logging.info("Saving FASTA")
     filtered_sequences = []  # Setup an empty list
     for record in SeqIO.parse(fasta_file, "fasta"):
         if record.id in filtered_isoforms:
             filtered_sequences.append(record)
     base_name = fasta_file.split("/")[-1]
-    SeqIO.write(filtered_sequences, f"filtered_{base_name}", "fasta")
+    output_path = os.path.join(output_dir, f"filtered_{base_name}")
+    SeqIO.write(filtered_sequences, output_path, "fasta")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -140,6 +140,7 @@ def main():
     parser.add_argument("--percent_A_downstream_threshold", action="store", dest="percent_A_downstream_threshold", default=95,type=float)
     parser.add_argument("--structural_categories_level", action="store", dest="structural_categories_level", default="strict")
     parser.add_argument("--minimum_illumina_coverage", action="store", dest="min_illumina_coverage", type=int, default=3)
+    parser.add_argument("--output_dir", action="store", dest="output_dir", help="Directory to save the filtered output files", required=True)
     
     results = parser.parse_args()
     # Get boolean filtering decisions
@@ -150,7 +151,11 @@ def main():
     # Read sqanti classification table
     classification = pd.read_table(results.classification_file)
     classification = classification[~classification['associated_gene'].isna()]
-    classification = classification[classification['associated_gene'].str.startswith("ENSG")]
+# Replace human-specific gene prefix check with mouse gene prefix
+classification = classification[classification['associated_gene'].str.startswith("ENSMUSG")]
+
+# Ensure your input files for protein-coding genes and gene names are mouse-specific
+# For instance, use mouse-specific files for protein_coding_genes and ensg_gene
 
     # Filter classification file
     if is_protein_coding_filtered:
@@ -166,39 +171,16 @@ def main():
     if results.structural_categories_level in structural_categories.keys():
         classification = classification[classification['structural_category'].isin(structural_categories[results.structural_categories_level])]
         
-
-    
     # Isoforms that have been filtered
     filtered_isoforms = set(classification['isoform'])
     # Save Data
     base_name = results.classification_file.split("/")[-1]
     base_name = ".".join(base_name.split('.')[:-1])
-    classification.to_csv(f"filtered_{base_name}.tsv", index=False, sep = "\t")
-    save_filtered_sqanti_gtf(results.corrected_gtf,filtered_isoforms )
-    save_filtered_sqanti_fasta(results.corrected_fasta, filtered_isoforms)
+    output_classification_path = os.path.join(results.output_dir, f"filtered_{base_name}.tsv")
+    classification.to_csv(output_classification_path, index=False, sep = "\t")
+    save_filtered_sqanti_gtf(results.corrected_gtf, filtered_isoforms, results.output_dir)
+    save_filtered_sqanti_fasta(results.corrected_fasta, filtered_isoforms, results.output_dir)
 
 #%%
-    
-
 if __name__=="__main__":
     main()
-
-
-# #%%
-# canonical_chromisomes = [f"chr{i+1}" for i in range(22)]
-# canonical_chromisomes = canonical_chromisomes + ['chrX','chrY','chrM']
-# #%%
-# import gtfparse
-# import pandas as pd 
-
-# gencode = gtfparse.parse_gtf("/Users/bj8th/Documents/Lab-for-Proteoform-Systems-Biology/Long-Read-Proteogenomics/data/input/gencode.v35.annotation.gtf")
-# #%%
-
-# with open("/Users/bj8th/Documents/Lab-for-Proteoform-Systems-Biology/Long-Read-Proteogenomics/data/input/gencode.v35.annotation.gtf") as gencode_in, open("/Users/bj8th/Documents/Lab-for-Proteoform-Systems-Biology/Long-Read-Proteogenomics/data/input/gencode.v35.annotation.canonical.gtf", "w") as gencode_out:
-#     for line in gencode_in.readlines():
-#         if line.startswith("#"):
-#             gencode_out.write(line)
-#         else:
-#             chromisome = line.split("\t")[0].strip()
-#             if chromisome in canonical_chromisomes:
-#                 gencode_out.write(line)

@@ -19,11 +19,19 @@ module load bioconda/py3.10
 
 conda activate refined-database-generation
 
+# Wild type
 python ./00_scripts/06_refine_orf_database.py \
---name ./06_refine_orf_database/MDS_30 \
---orfs ./05_orf_calling/MDS_best_ORF.tsv \
---pb_fasta ./02_sqanti/MDS_corrected.fasta \
+--name ./wild_type/06_refine_orf_database/WT_30 \
+--orfs ./wild_type/05_orf_calling/WT_best_ORF.tsv \
+--pb_fasta ./wild_type/02_sqanti/WT_corrected.fasta \
 --coding_score_cutoff 0.3 
+
+# Mutant
+python ./00_scripts/06_refine_orf_database.py \
+--name ./mutant/06_refine_orf_database/M_30 \
+--orfs ./mutant/05_orf_calling/M_best_ORF.tsv \
+--pb_fasta ./mutant/02_sqanti/M_corrected.fasta \
+--coding_score_cutoff 0.3
 
 conda deactivate 
 

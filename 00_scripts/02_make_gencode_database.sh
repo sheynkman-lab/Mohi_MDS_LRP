@@ -20,8 +20,6 @@ module load perl/5.36.0
 module load star/2.7.9a 
 module load kallisto/0.48.0
 
-cd /project/sheynkman/projects/mohi_MDS
-
 conda activate make_database
 
 python ./00_scripts/02_make_gencode_database.py \

@@ -26,18 +26,18 @@ cd /project/sheynkman/projects/mohi_MDS
 cpat \
    -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
    -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g ./02_sqanti/WT_corrected.fasta \
+   -g wild_type/02_sqanti/WT_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o ./04_CPAT/WT \
-   2> cpat.error
+   -o wild_type/04_CPAT/WT \
+   2> WT_cpat.error
 
 # Mutant
 cpat \
    -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
    -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g ./02_sqanti/M_corrected.fasta \
+   -g mutant/02_sqanti/M_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o ./04_CPAT/M \
-   2> cpat.error
+   -o mutant/04_CPAT/M \
+   2> M_cpat.error
