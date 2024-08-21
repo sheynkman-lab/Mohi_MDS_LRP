@@ -7,8 +7,8 @@ I ran the script on all samples first, and the output is in a separate folder ca
 git status
 git add .
 git commit -m "Your descriptive commit message"
-git remote -v
-#git remote add origin https://github.com/sheynkman-lab/Mohi_MDS_LRP.git #only if the remote is not already set
+git reWTe -v
+#git reWTe add origin https://github.com/sheynkman-lab/Mohi_MDS_LRP.git #only if the reWTe is not already set
 git push origin main
 ```
 ## Set working directory and load required modules for LRP
@@ -100,91 +100,21 @@ sbatch ./00_scripts/09_sqanti_protein.sh
 ```
 ## 10 - 5' UTR
 ```
-module load gcc/11.4.0  
-module load openmpi/4.1.4
-module load python/3.11.4
-module load bioconda/py3.10
-module load anaconda/2023.07-py3.11
-
-conda activate utr
-
-python ./00_scripts/10_1_get_gc_exon_and_5utr_info.py \
---gencode_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---odir ./10_5p_utr
-
-python ./00_scripts/10_2_classify_5utr_status.py \
---gencode_exons_bed ./10_5p_utr/gencode_exons_for_cds_containing_ensts.bed \
---gencode_exons_chain ./10_5p_utr/gc_exon_chain_strings_for_cds_containing_transcripts.tsv \
---sample_cds_gtf ./07_make_cds_gtf/MDS_cds.gtf \
---odir ./10_5p_utr 
-
-python ./00_scripts/10_3_merge_5utr_info_to_pclass_table.py \
---name MDS \
---utr_info ./10_5p_utr/pb_5utr_categories.tsv \
---sqanti_protein_classification ./09_sqanti_protein/MDS.sqanti_protein_classification.tsv \
---odir ./10_5p_utr
-
-conda deactivate
-module purge
+sbatch 00_scripts/10_5p_utr.sh
 ```
 ## 11 - Protein classification
 ```
-module load gcc/11.4.0  
-module load openmpi/4.1.4
-module load python/3.11.4
-module load bioconda/py3.10
-module load anaconda/2023.07-py3.11
-
-conda activate protein_class
-
-python ./00_scripts/11_protein_classification_add_meta.py \
---protein_classification  ./10_5p_utr/MDS.sqanti_protein_classification_w_5utr_info.tsv \
---best_orf ./05_orf_calling/MDS_best_ORF.tsv \
---refined_meta ./06_refine_orf_database/MDS_30_orf_refined.tsv \
---ensg_gene ./01_reference_tables/ensg_gene.tsv \
---name MDS \
---dest_dir ./11_protein_classification/
-
-python ./00_scripts/11_protein_classification.py \
---sqanti_protein ./11_protein_classification/MDS.protein_classification_w_meta.tsv \
---name MDS \
---dest_dir ./11_protein_classification/
+sbatch 00_scripts/11_protein_classification.sh
 ```
 ## 12 - Protein gene rename
 ```
-python ./00_scripts/12_protein_gene_rename.py \
-    --sample_gtf ./07_make_cds_gtf/MDS_cds.gtf \
-    --sample_protein_fasta ./06_refine_orf_database/MDS_30_orf_refined.fasta \
-    --sample_refined_info ./06_refine_orf_database/MDS_30_orf_refined.tsv \
-    --pb_protein_genes ./11_protein_classification/MDS_genes.tsv \
-    --name ./12_protein_gene_rename/MDS
+sbatch 00_scripts/12_protein_gene_rename.sh
 ```
-## 13 - Protein filter
+Skip middle steps from the LRP here, because we are focused on transcripts.
+## 17 - Track visualization
+This step is more run by run customizable, so I'll do it manually
 ```
-python ./00_scripts/13_protein_filter.py \
---protein_classification ./11_protein_classification/MDS.protein_classification.tsv \
---gencode_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---protein_fasta ./12_protein_gene_rename/MDS.protein_refined.fasta \
---sample_cds_gtf ./12_protein_gene_rename/MDS_with_cds_refined.gtf \
---min_junctions_after_stop_codon 2 \
---name ./13_protein_filter/MDS
-```
-## 14 - Protein hybrid database
-```
-python ./00_scripts/14_make_hybrid_database.py \
-    --protein_classification ./13_protein_filter/MDS.classification_filtered.tsv \
-    --gene_lens ./01_reference_tables/gene_lens.tsv \
-    --pb_fasta ./13_protein_filter/MDS.filtered_protein.fasta \
-    --gc_fasta ./02_make_gencode_database/gencode_clusters.fasta \
-    --refined_info ./12_protein_gene_rename/MDS_orf_refined_gene_update.tsv \
-    --pb_cds_gtf ./13_protein_filter/MDS_with_cds_filtered.gtf \
-    --name ./14_protein_hybrid_database/MDS
-
-conda deactivate
 module purge
-```
-## 18 - Track visualization
-```
 module load gcc/11.4.0  
 module load openmpi/4.1.4
 module load python/3.11.4
@@ -193,44 +123,27 @@ module load anaconda/2023.07-py3.11
 
 conda activate visualization
 
-## Reference track 
-
-python ./00_scripts/18_gencode_filter_protein_coding.py \
---reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---output_dir ./18_track_visualization/reference
-
-gtfToGenePred ./18_track_visualization/reference/gencode.filtered.gtf ./18_track_visualization/reference/gencode.filtered.genePred
-
-genePredToBed ./18_track_visualization/reference/gencode.filtered.genePred ./18_track_visualization/reference/gencode.filtered.bed12
-
-python ./00_scripts/18_gencode_add_rgb_to_bed.py \
---gencode_bed ./18_track_visualization/reference/gencode.filtered.bed12 \
---rgb 0,0,140 \
---version V46 \
---output_dir ./18_track_visualization/reference
-
-# Multiregion BED
-
+# Wild Type - RGB code (219,076,119)
 # Refined
-python ./00_scripts/18_make_region_bed_for_ucsc.py \
---name MDS_refined \
---sample_gtf ./07_make_cds_gtf/MDS_cds.gtf \
---reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---output_dir ./18_track_visualization/multiregion_bed
+gtfToGenePred wild_type/12_protein_gene_rename/WT_with_cds_refined.gtf wild_type/17_track_visualization/WT_refined_cds.genePred
+genePredToBed wild_type/17_track_visualization/WT_refined_cds.genePred wild_type/17_track_visualization/WT_refined_cds.bed12
 
-# Filtered
-python ./00_scripts/18_make_region_bed_for_ucsc.py \
---name MDS_filtered \
---sample_gtf ./13_protein_filter/MDS_with_cds_filtered.gtf \
---reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---output_dir ./18_track_visualization/multiregion_bed
+python ./00_scripts/17_add_rgb_to_bed.py \
+--input_bed wild_type/17_track_visualization/WT_refined_cds.bed12 \
+--output_dir wild_type/17_track_visualization/ \
+--rgb 219,076,119
 
-# Hybrid
-python ./00_scripts/18_make_region_bed_for_ucsc.py \
---name MDS_hybrid \
---sample_gtf ./14_protein_hybrid_database/MDS_cds_high_confidence.gtf \
---reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
---output_dir ./18_track_visualization/multiregion_bed
+# Mutant - RGB code (016,085,154)
+# Refined
+gtfToGenePred mutant/12_protein_gene_rename/M_with_cds_refined.gtf mutant/17_track_visualization/M_refined_cds.genePred
+genePredToBed mutant/17_track_visualization/M_refined_cds.genePred mutant/17_track_visualization/M_refined_cds.bed12
 
-conda deactivate
+python ./00_scripts/17_add_rgb_to_bed.py \
+--input_bed mutant/17_track_visualization/M_refined_cds.bed12 \
+--output_dir mutant/17_track_visualization/ \
+--rgb 016,085,154
+```
+
+## 18 - Gene & Transcript Expression tables
+First, I am creating tables that show gene expression, transcript expression, and transcript fractional abundance for mutant vs. wild type samples. Then, I will create a summary table. Becuase of the way PacBio accession numbers are assigned, we need to work around the mismatch. Here, I am using the wild type samples as a reference for accession numbers, then labeling any transcripts unique to the mutant samples as 'gene name + PB + number'. <br />
 ```

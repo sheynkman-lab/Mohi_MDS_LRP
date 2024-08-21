@@ -1,0 +1,7 @@
+To use your local R packages in RStudio, run:
+echo "R_LIBS_USER=~/R/goolf/4.3" > ~/.Renviron
+
+The following have been reloaded with a version change:
+  1) python/.3.11.4 => python/3.11.4
+
+/var/spool/slurm/slurmd/job63411611/slurm_script: line 23: cd: /project/sheynkman/projects/mohi_MDS: No such file or directory

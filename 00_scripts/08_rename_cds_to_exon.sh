@@ -22,14 +22,22 @@ module load bioconda/py3.10
 
 conda activate reference_tab
 
+# Wild type
 apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
   python ./00_scripts/08_rename_cds_to_exon.py \
-  --sample_gtf ./07_make_cds_gtf/MDS_cds.gtf \
-  --sample_name ./08_rename_cds_to_exon/MDS \
+  --sample_gtf wild_type/07_make_cds_gtf/WT_cds.gtf \
+  --sample_name wild_type/08_rename_cds_to_exon/WT \
   --reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
-  --reference_name ./08_rename_cds_to_exon/gencode 
+  --reference_name wild_type/08_rename_cds_to_exon/gencode
 "
 
-exit
+# Mutant
+apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
+  python ./00_scripts/08_rename_cds_to_exon.py \
+  --sample_gtf mutant/07_make_cds_gtf/M_cds.gtf \
+  --sample_name mutant/08_rename_cds_to_exon/M \
+  --reference_gtf /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf \
+  --reference_name mutant/08_rename_cds_to_exon/gencode
+"
 
 conda deactivate 

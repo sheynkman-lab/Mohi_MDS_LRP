@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/sfs/gpfs/tardis/project/sheynkman/projects/Mohi_MDS_LRP/00_scripts/01.7_rename_transcripts.py", line 79, in <module>
+    main()
+  File "/sfs/gpfs/tardis/project/sheynkman/projects/Mohi_MDS_LRP/00_scripts/01.7_rename_transcripts.py", line 60, in main
+    accession_mapping = generate_mapping(args.sample1_fasta, args.sample2_fasta)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/sfs/gpfs/tardis/project/sheynkman/projects/Mohi_MDS_LRP/00_scripts/01.7_rename_transcripts.py", line 22, in generate_mapping
+    with open(sample1_fasta, 'r') as file1, open(sample2_fasta, 'r') as file2:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'mutant/01_isoseq/06_collapse/Pat.collapsed.fasta'

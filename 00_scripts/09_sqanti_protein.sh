@@ -25,14 +25,27 @@ conda activate sqanti_protein
 
 export PYTHONPATH=$PYTHONPATH:/project/sheynkman/programs/SQANTI3-5.2/cDNA_Cupcake/sequence/
 export PYTHONPATH=$PYTHONPATH:/project/sheynkman/programs/SQANTI3-5.2/cDNA_Cupcake/
+export PYTHONPATH=$PYTHONPATH:/project/sheynkman/programs/SQANTI3-5.2
 
+
+# Wild type
 python ./00_scripts/09_sqanti_protein.py \
-./08_rename_cds_to_exon/MDS.transcript_exons_only.gtf \
-./08_rename_cds_to_exon/MDS.cds_renamed_exon.gtf \
-./05_orf_calling/MDS_best_ORF.tsv \
-./08_rename_cds_to_exon/gencode.transcript_exons_only.gtf \
-./08_rename_cds_to_exon/gencode.cds_renamed_exon.gtf \
--d ./09_sqanti_protein/ \
--p MDS
+wild_type/08_rename_cds_to_exon/WT.transcript_exons_only.gtf \
+wild_type/08_rename_cds_to_exon/WT.cds_renamed_exon.gtf \
+wild_type/05_orf_calling/WT_best_ORF.tsv \
+wild_type/08_rename_cds_to_exon/gencode.transcript_exons_only.gtf \
+wild_type/08_rename_cds_to_exon/gencode.cds_renamed_exon.gtf \
+-d wild_type/09_sqanti_protein/ \
+-p WT
+
+# Mutant
+python ./00_scripts/09_sqanti_protein.py \
+mutant/08_rename_cds_to_exon/M.transcript_exons_only.gtf \
+mutant/08_rename_cds_to_exon/M.cds_renamed_exon.gtf \
+mutant/05_orf_calling/M_best_ORF.tsv \
+mutant/08_rename_cds_to_exon/gencode.transcript_exons_only.gtf \
+mutant/08_rename_cds_to_exon/gencode.cds_renamed_exon.gtf \
+-d mutant/09_sqanti_protein/ \
+-p M
 
 conda deactivate
