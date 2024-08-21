@@ -87,6 +87,7 @@ sbatch ./00_scripts/05_orf_calling.sh
 sbatch ./00_scripts/06_refine_orf_database.sh
 ```
 ## 7 - Make CDS GTF
+Note: for mouse data, the python script needs to be modified from hg38 to mm39. <br />
 ```
 sbatch ./00_scripts/07_make_cds_gtf.sh
 ```
@@ -110,7 +111,7 @@ sbatch 00_scripts/11_protein_classification.sh
 ```
 sbatch 00_scripts/12_protein_gene_rename.sh
 ```
-Skip middle steps from the LRP here, because we are focused on transcripts.
+Skip middle steps from the typical LRP workflow here, because we are focused on transcripts.
 ## 17 - Track visualization
 This step is more run by run customizable, so I'll do it manually
 ```
@@ -146,4 +147,17 @@ python ./00_scripts/17_add_rgb_to_bed.py \
 
 ## 18 - Gene & Transcript Expression tables
 First, I am creating tables that show gene expression, transcript expression, and transcript fractional abundance for mutant vs. wild type samples. Then, I will create a summary table. Becuase of the way PacBio accession numbers are assigned, we need to work around the mismatch. Here, I am using the wild type samples as a reference for accession numbers, then labeling any transcripts unique to the mutant samples as 'gene name + PB + number'. <br />
+```
+# gene expression 
+python 00_scripts/18_gene_expression.py wild_type/17_track_visualization/WT_refined_cds.bed12 mutant/17_track_visualization/M_refined_cds.bed12 18_diff_expression/18_differential_gene_expression.csv
+
+# transcript expression & fractional abundance
+python 00_scripts/18_fractional_abundance.py wild_type/17_track_visualization/WT_refined_cds.bed12 mutant/17_track_visualization/M_refined_cds.bed12 18_diff_expression/18_transcript_expression_fractional_abundance.csv
+
+# gene and transcript summary table
+python 00_scripts/18_summary_table.py 18_diff_expression/18_transcript_expression_fractional_abundance.csv 18_diff_expression/18_summary_table.csv
+```
+Finally, I am making list of genes and transcripts unique to the mutant samples. This will use both the unified naming scheme and have the original PacBio accession numbers for the mutant samples. <br />
+```
+python 00_scripts/18_unique_transcripts.py wild_type/17_track_visualization/WT_refined_cds.bed12 mutant/17_track_visualization/M_refined_cds.bed12 18_diff_expression/18_unique_transcripts.csv
 ```
