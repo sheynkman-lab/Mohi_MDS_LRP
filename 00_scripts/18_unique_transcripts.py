@@ -60,22 +60,9 @@ def compare_samples(sample1_bed, sample2_bed, output_file):
     # Filter to keep only transcripts present in sample 2 but not in sample 1
     sample2_only_df = merged_df[merged_df['pb_id_sample1'].isna()]
     
-    # Initialize a counter for the unified transcript naming
-    counter = 1
-
-    # Function to assign a unified PB ID
-    def assign_unified_pb_id(row):
-        nonlocal counter
-        unified_id = f"{row['gene_name_sample2']}PB{counter}"
-        counter += 1
-        return unified_id
-
-    # Apply the unified PB ID assignment
-    sample2_only_df['unified_pb_id'] = sample2_only_df.apply(assign_unified_pb_id, axis=1)
-    
     # Select the relevant columns for the output
-    result_df = sample2_only_df[['gene_name_sample2', 'unified_pb_id', 'pb_id_sample2']]
-    result_df.columns = ['gene_name', 'unified_transcript_name', 'original_transcript_name']
+    result_df = sample2_only_df[['gene_name_sample2', 'pb_id_sample2']]
+    result_df.columns = ['gene_name', 'unique_transcript_name']
     
     # Save the output to a CSV file
     result_df.to_csv(output_file, index=False)

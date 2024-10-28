@@ -54,38 +54,25 @@ def compare_samples(sample1_bed, sample2_bed, output_file):
     agg_df1 = calculate_fractional_abundance(agg_df1)
     agg_df2 = calculate_fractional_abundance(agg_df2)
     
-    # Merge the two aggregated DataFrames on genomic coordinates
-    merged_df = pd.merge(agg_df1, agg_df2, on=['chrom', 'start', 'end', 'strand'], suffixes=('_sample1', '_sample2'), how='outer')
-    
-    # Initialize a counter
-    counter = 1
-
-    # Function to assign PB IDs
-    def assign_pb_id(row):
-        nonlocal counter
-        if pd.notnull(row['pb_id_sample1']):
-            return row['pb_id_sample1']
-        else:
-            pb_id = f"{row['gene_name_sample2']}PB{counter}"
-            counter += 1
-            return pb_id
-
-    # Apply the function to the DataFrame
-    merged_df['pb_id'] = merged_df.apply(assign_pb_id, axis=1)
-    
-    # Fill missing gene names from sample 1 with those from sample 2
-    merged_df['gene_name'] = merged_df['gene_name_sample1'].combine_first(merged_df['gene_name_sample2'])
+    # Initialize a DataFrame for the output
+    output_df = pd.DataFrame({
+        'chrom': agg_df1['chrom'],
+        'start': agg_df1['start'],
+        'end': agg_df1['end'],
+        'gene_name': agg_df1['gene_name'],
+        'pb_id': agg_df1['pb_id'],
+        'strand': agg_df1['strand'],
+        'cpm_sample1': agg_df1['cpm'],
+        'cpm_sample2': agg_df2['cpm'] if len(agg_df2) > 0 else 0,
+        'fractional_abundance_sample1': agg_df1['fractional_abundance'],
+        'fractional_abundance_sample2': agg_df2['fractional_abundance'] if len(agg_df2) > 0 else 0
+    })
     
     # Calculate the difference in CPM, handling missing values
-    merged_df['cpm_difference'] = merged_df['cpm_sample1'].fillna(0) - merged_df['cpm_sample2'].fillna(0)
-    
-    # Select the relevant columns for the output
-    result_df = merged_df[['chrom', 'start', 'end', 'gene_name', 'pb_id', 'strand', 
-                           'cpm_sample1', 'cpm_sample2', 'cpm_difference',
-                           'fractional_abundance_sample1', 'fractional_abundance_sample2']]
+    output_df['cpm_difference'] = output_df['cpm_sample1'].fillna(0) - output_df['cpm_sample2'].fillna(0)
     
     # Save the output to a CSV file
-    result_df.to_csv(output_file, index=False)
+    output_df.to_csv(output_file, index=False)
     print(f"Output saved to {output_file}")
 
 if __name__ == "__main__":

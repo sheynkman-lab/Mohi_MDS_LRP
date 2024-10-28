@@ -249,62 +249,56 @@ def orf_calling_multiprocessing(orf, pool, num_orfs_per_accession=1, num_cores =
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process ORF-related file locations')
-    parser.add_argument('--orf_coord', '-oc', action='store', dest='orf_coord', help='ORF coordinate input file location')
-    parser.add_argument('--orf_fasta', '-of', action='store', dest='orf_fasta', help='ORF fasta input file location')
-    parser.add_argument('--gencode_gtf', '-g', action='store', dest='gencode_gtf', help='gencode coordinate input file location')
-    parser.add_argument('--sample_gtf', '-sg', action='store', dest='sample_gtf', help='Sample GTF input file location')
-    parser.add_argument('--pb_gene', '-pg', action='store', dest='pb_gene', help='PB Accession/Gencode ID mapping input file location')
-    parser.add_argument('--classification', '-c', action='store', dest='classification', help='Sample classification input file location')
-    parser.add_argument('--sample_fasta', '-sf', action='store', dest='sample_fasta', help='Sample FASTA input file location')
+    parser = argparse.ArgumentParser(description='Proccess ORF related file locations')
+    parser.add_argument('--orf_coord', '-oc',action='store', dest= 'orf_coord',help='ORF coordinate input file location')
+    parser.add_argument('--orf_fasta', '-of',action='store', dest= 'orf_fasta',help='ORF fasta input file location')
+    parser.add_argument('--gencode_gtf','-g',action='store', dest= 'gencode_gtf',help='gencode coordinate input file location')
+    parser.add_argument('--sample_gtf','-sg',action='store', dest= 'sample_gtf',help='Sample GTF input file location')
+    parser.add_argument('--pb_gene','-pg',action='store', dest= 'pb_gene',help='PB Accession/Gencode id mapping input file location')
+    parser.add_argument('--classification','-c',action='store', dest= 'classification',help='sample classification input file location')
+    parser.add_argument('--sample_fasta','-sf',action='store', dest= 'sample_fasta',help='Sample FASTA input file location')
     parser.add_argument('--num_cores', action='store', dest='num_cores', type=int, default=12)
-    parser.add_argument('--output', '-o', action='store', dest='output', help='Output file location')
+    parser.add_argument('--output','-o',action='store', dest= 'output',help='Output file location')
     results = parser.parse_args()
 
-    pool = multiprocessing.Pool(processes=results.num_cores)
+    pool = multiprocessing.Pool(processes = results.num_cores)
 
+    
     logging.info("Loading data...")
     orf_coord = read_orf(results.orf_coord)
     is_with_stop_codon = is_orf_called_with_stop_codon(results.orf_fasta)
 
-    orf_coord = pd.merge(orf_coord, is_with_stop_codon, on='ID', how='left')
+    orf_coord = pd.merge(orf_coord, is_with_stop_codon, on ='ID', how = 'left')
     gencode = read_gtf(results.gencode_gtf)
     sample_gtf = read_gtf(results.sample_gtf)
-    pb_gene = pd.read_csv(results.pb_gene, sep='\t')
-    classification = pd.read_csv(results.classification, sep='\t')
-    
-    orf_seq = defaultdict()  # pb_acc -> orf_seq
+    pb_gene = pd.read_csv(results.pb_gene, sep = '\t')
+    classification = pd.read_csv(results.classification, sep = '\t')
+    orf_seq= defaultdict() # pb_acc -> orf_seq
     for rec in SeqIO.parse(results.sample_fasta, 'fasta'):
-        pb_id = rec.id.split('|')[0]
+        pb_id = rec.id.split('|')[0] 
         orf_seq[pb_id] = str(rec.seq)
 
-    logging.info("Mapping ORFs to gencode...")
-    all_orfs = orf_mapping(orf_coord, gencode, sample_gtf, orf_seq, pool, results.num_cores)
-    all_orfs.to_csv('all_orfs_mapped.tsv', sep='\t', index=False)
+    logging.info("Mapping orfs to gencode...")
+    all_orfs = orf_mapping(orf_coord, gencode, sample_gtf, orf_seq, pool,results.num_cores)
+    all_orfs.to_csv('all_orfs_mapped.tsv', sep='\t',index=False)
     
     logging.info("Calling ORFs...")
+    # orfs = orf_calling(all_orfs, num_orfs_per_accession = 1)
     orfs = orf_calling_multiprocessing(all_orfs, pool, 1, results.num_cores)
     
     logging.info("Adding metadata...")
-    # Calculate mean FL across FL.sample6, FL.sample7, and FL.sample8
-    classification['FL_mean'] = classification[['FL.sample3', 'FL.sample4', 'FL.sample5']].mean(axis=1)
-    total_mean_FL = classification['FL_mean'].sum()
-    classification['CPM'] = classification['FL_mean'] / total_mean_FL * 1_000_000
+    classification = classification[['isoform', 'FL']]
+    total = classification['FL'].sum()
+    classification['CPM'] = classification['FL'] / total * 1000000
 
-    # Merge with ORF and gene data
-    orfs = pd.merge(orfs, pb_gene, on='pb_acc', how='left')
-    orfs = pd.merge(orfs, classification[['isoform', 'FL_mean', 'CPM']], left_on='pb_acc', right_on='isoform', how='left')
-    orfs = orfs.drop(columns=['isoform'])
-    
+    orfs = pd.merge(orfs, pb_gene, on = 'pb_acc', how = 'left')
+    orfs = pd.merge(orfs, classification,left_on = 'pb_acc', right_on='isoform', how = 'left')
+    orfs = orfs.drop(columns = ['isoform'])
     logging.info("Saving results...")
-    orfs = orfs[['pb_acc', 'len', 'orf_frame', 'orf_start', 'orf_end', 'orf_len',
-                 'fickett', 'hexamer', 'coding_score', 'orf_rank', 'seqname', 'strand', 'gencode_atg',
-                 'upstream_atgs', 'atg_rank', 'score_rank', 'orf_calling_confidence', 'atg_score', 'orf_score', 
-                 'gene', 'FL_mean', 'CPM', 'has_stop_codon']]
-    orfs.to_csv(results.output, index=False, sep='\t')
-
-if __name__ == "__main__":
-    main()
+    orfs = orfs[['pb_acc','len','orf_frame', 'orf_start', 'orf_end', 'orf_len',
+       'fickett', 'hexamer', 'coding_score', 'orf_rank', 'seqname','strand','gencode_atg',
+       'upstream_atgs', 'atg_rank', 'score_rank', 'orf_calling_confidence','atg_score', 'orf_score', 'gene', 'FL', 'CPM','has_stop_codon']]
+    orfs.to_csv(results.output, index = False, sep = "\t")
 
 #%%
 

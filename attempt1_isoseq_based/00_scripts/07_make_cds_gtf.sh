@@ -16,36 +16,35 @@ module load apptainer/1.2.2
 module load gcc/11.4.0  
 module load openmpi/4.1.4
 module load python/3.11.4
-module load miniforge/24.3.0-py3.11
-
-source $(conda info --base)/etc/profile.d/conda.sh
+module load bioconda/py3.10
+module load anaconda/2023.07-py3.11
 
 #activate conda env
 
 conda activate reference_tab
 
-# WT
+# Wild type
 # Command to open the container & run script
 
 apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
-    python 00_scripts/07_make_pacbio_cds_gtf.py \
-    --sample_gtf 02_sqanti/isoquant/WT_isoquant_corrected.gtf \
-    --agg_orfs 06_refine_orf_database/WT/WT_30_orf_refined.tsv \
-    --refined_orfs 05_orf_calling/WT/WT_best_ORF.tsv \
-    --pb_gene 04_transcriptome_summary/WT/pb_gene.tsv \
-    --output_cds 07_make_cds_gtf/WT/WT_cds.gtf
+    python ./00_scripts/07_make_pacbio_cds_gtf.py \
+    --sample_gtf ./wild_type/02_sqanti/WT_corrected.gtf \
+    --agg_orfs ./wild_type/06_refine_orf_database/WT_30_orf_refined.tsv \
+    --refined_orfs ./wild_type/05_orf_calling/WT_best_ORF.tsv \
+    --pb_gene ./wild_type/04_transcriptome_summary/pb_gene.tsv \
+    --output_cds ./wild_type/07_make_cds_gtf/WT_cds.gtf
 "
 
-# Q157R
+# Mutant
 # Command to open the container & run script
 
 apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
-    python 00_scripts/07_make_pacbio_cds_gtf.py \
-    --sample_gtf 02_sqanti/isoquant/Q157R_isoquant_corrected.gtf \
-    --agg_orfs 06_refine_orf_database/Q157R/Q157R_30_orf_refined.tsv \
-    --refined_orfs 05_orf_calling/Q157R/Q157R_best_ORF.tsv \
-    --pb_gene 04_transcriptome_summary/Q157R/pb_gene.tsv \
-    --output_cds 07_make_cds_gtf/Q157R/Q157R_cds.gtf
+    python ./00_scripts/07_make_pacbio_cds_gtf.py \
+    --sample_gtf ./mutant/02_sqanti/M_corrected.gtf \
+    --agg_orfs ./mutant/06_refine_orf_database/M_30_orf_refined.tsv \
+    --refined_orfs ./mutant/05_orf_calling/M_best_ORF.tsv \
+    --pb_gene ./mutant/04_transcriptome_summary/pb_gene.tsv \
+    --output_cds ./mutant/07_make_cds_gtf/M_cds.gtf
 "
 
 exit

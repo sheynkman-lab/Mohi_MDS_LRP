@@ -17,27 +17,27 @@ module load gcc/11.4.0
 module load openmpi/4.1.4
 module load python/3.11.4
 module load R/4.3.1
-module load miniforge/24.3.0-py3.11
-
 
 export PATH="$HOME/.local/bin:$PATH"
 
-# WT
-cpat \
-   -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
-   -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g 02_sqanti/isoquant/WT_isoquant_corrected.fasta \
-   --min-orf=50 \
-   --top-orf=50 \
-   -o 04_CPAT/WT/WT \
-   2> WT_iso_cpat.error
+cd /project/sheynkman/projects/mohi_MDS
 
-# Q157R
+# Wild type
 cpat \
    -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
    -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g 02_sqanti/isoquant/Q157R_isoquant_corrected.fasta \
+   -g wild_type/02_sqanti/WT_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o 04_CPAT/Q157R/Q157R \
-   2> Q157R_iso_cpat.error
+   -o wild_type/04_CPAT/WT \
+   2> WT_cpat.error
+
+# Mutant
+cpat \
+   -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
+   -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
+   -g mutant/02_sqanti/M_corrected.fasta \
+   --min-orf=50 \
+   --top-orf=50 \
+   -o mutant/04_CPAT/M \
+   2> M_cpat.error

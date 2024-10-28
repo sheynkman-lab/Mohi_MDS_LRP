@@ -34,7 +34,6 @@ def format_table(input_file, output_file):
 
     # Save the formatted DataFrame to a CSV file
     formatted_df.to_csv(output_file, index=False)
-    print(f"Formatted table saved to: {output_file}")  # Output confirmation with file path
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Format CPM table by gene and transcript.")

@@ -32,18 +32,14 @@ def compare_samples(sample1_bed, sample2_bed, output_file):
     agg_df1 = aggregate_cpm_by_gene(df1)
     agg_df2 = aggregate_cpm_by_gene(df2)
     
-    # Initialize a DataFrame for the output
-    output_df = pd.DataFrame({
-        'gene_name': agg_df1['gene_name'],
-        'cpm_sample1': agg_df1['cpm'],
-        'cpm_sample2': agg_df2['cpm'] if len(agg_df2) > 0 else 0,
-    })
+    # Merge the two aggregated DataFrames on gene_name
+    merged_df = pd.merge(agg_df1, agg_df2, on='gene_name', suffixes=('_sample1', '_sample2'))
     
     # Calculate the difference in CPM
-    output_df['cpm_difference'] = output_df['cpm_sample1'] - output_df['cpm_sample2']
+    merged_df['cpm_difference'] = merged_df['cpm_sample1'] - merged_df['cpm_sample2']
     
     # Save the output to a CSV file
-    output_df.to_csv(output_file, index=False)
+    merged_df.to_csv(output_file, index=False)
     print(f"Output saved to {output_file}")
 
 if __name__ == "__main__":
