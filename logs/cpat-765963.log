@@ -1,0 +1,8 @@
+To use your local R packages in RStudio, run:
+mkdir -p ~/R/{goolf,x86_64-pc-linux-gnu-library}
+cd ~/R/x86_64-pc-linux-gnu-library
+ln -s ../goolf/4.3
+
+The following have been reloaded with a version change:
+  1) python/.3.11.4 => python/3.11.4
+

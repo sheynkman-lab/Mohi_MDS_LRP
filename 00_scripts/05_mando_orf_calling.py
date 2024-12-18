@@ -25,49 +25,64 @@ def is_orf_called_with_stop_codon(orf_fasta, stop_codons=('TAG','TAA','TGA')):
     """
     orf_stop_codon_status_list = []
     for record in SeqIO.parse(orf_fasta, 'fasta'):
-        orf_stop_codon_status_list.append([record.id,str(record.seq).endswith(stop_codons)])
-    orf_stop_codon_status = pd.DataFrame(orf_stop_codon_status_list, columns=['ID','has_stop_codon'])
+        orf_stop_codon_status_list.append([record.id, str(record.seq).endswith(stop_codons)])
+    orf_stop_codon_status = pd.DataFrame(orf_stop_codon_status_list, columns=['ID', 'has_stop_codon'])
     return orf_stop_codon_status
 
+def read_orf(orf_fasta):
+    """Reads ORF fasta file and extracts pb_acc, misc, orf, and orf_start.
 
+    Args:
+        orf_fasta (str): filename of orf fasta file
 
-def orf_mapping(orf_coord, gencode, sample_gtf, orf_seq, pool, num_cores = 12):
+    Returns:
+        pandas DataFrame: columns:[ID (str), pb_acc (str), misc (str), orf (str), orf_start (int)]
+    """
+    orf_list = []
+    for record in SeqIO.parse(orf_fasta, 'fasta'):
+        parts = record.id.split()
+        print(f"ID: {record.id}, Parts: {parts}")  # Debug print statement
+        if len(parts) >= 7:
+            pb_acc = parts[0].lower()  # Normalize to lowercase
+            misc = parts[1]
+            orf = parts[2]
+            orf_start = int(parts[4])  # Assuming the fifth part is the orf_start
+        else:
+            print(f"Unexpected ID format: {record.id}")  # Debug print statement
+            pb_acc = parts[0].lower()  # Normalize to lowercase
+            misc = 'ORF'
+            orf = parts[1] if len(parts) > 1 else ''
+            orf_start = 0  # Default value if orf_start is not available
+        orf_list.append([record.id, pb_acc, misc, orf, orf_start])
+    orf_df = pd.DataFrame(orf_list, columns=['ID', 'pb_acc', 'misc', 'orf', 'orf_start'])
+    print("ORF DataFrame:", orf_df.head())  # Debug print statement
+    return orf_df
+
+def orf_mapping(orf_coord, gencode, sample_gtf, orf_seq, pool, num_cores=12):
     def get_num_upstream_atgs(row):
         orf_start = int(row['orf_start'])
         acc = row['pb_acc']
         if acc in orf_seq.keys():
-            seq = orf_seq[acc] 
+            seq = orf_seq[acc]
         else:
             return np.inf
-        upstream_seq = seq[0:orf_start-1] # sequence up to the predicted ATG
+        upstream_seq = seq[0:orf_start-1]  # sequence up to the predicted ATG
         num_atgs = upstream_seq.count('ATG')
         return num_atgs
-
-
     print(sample_gtf.head())
 
-    
     exons = sample_gtf[sample_gtf['feature'] == 'exon'].copy()
-    #exons = sample_gtf.filter(sample_gtf['feature'] == 'exon').clone()
-    exons['exon_length'] = abs(exons['end'] - exons['start']) + 1
-   # exons = exons.with_columns([
-   # ('exon_length', abs(exons['end'] - exons['start']) + 1)
-   # ])
-    exons.rename(columns = {'start' : 'exon_start', 'end': 'exon_end'}, inplace = True)
-    #exons = exons.rename({'start': 'exon_start', 'end': 'exon_end'})
+    exons['transcript_id'] = exons['transcript_id'].str.lower()  # Normalize to lowercase
+    exons.rename(columns={'start': 'exon_start', 'end': 'exon_end'}, inplace=True)  # Rename columns
+    exons['exon_length'] = exons['exon_end'] - exons['exon_start'] + 1  # Calculate exon length
+
     print(gencode['feature'].unique())
     start_codons = gencode[gencode['feature'] == 'start_codon']
-    start_codons = start_codons[['seqname','transcript_id','strand',  'start', 'end']].copy()
-    start_codons.rename(columns = {'start' : 'start_codon_start', 'end': 'start_codon_end'}, inplace = True)
-        
-    logging.info("Mapping plus strands...")
+    start_codons = start_codons[['seqname', 'transcript_id', 'strand', 'start', 'end']].copy()
+    start_codons.rename(columns={'start': 'start_codon_start', 'end': 'start_codon_end'}, inplace=True)
+
     plus = plus_mapping(exons, orf_coord, start_codons, pool, num_cores)
-    logging.info("Mapping minus strands...")
-    minus = minus_mapping(exons, orf_coord, start_codons, pool, num_cores)
-    all_cds = pd.concat([plus, minus])
-    
-    all_cds['upstream_atgs'] = all_cds.apply(get_num_upstream_atgs, axis=1)
-    return all_cds
+    return plus
 
 def compare_start_plus(row, start_codons):
     start = int(row['cds_start'])
@@ -77,41 +92,44 @@ def compare_start_plus(row, start_codons):
     return None
 
 def plus_mapping_single_chromosome(orf_coord, plus_exons, start_codons):
-    plus_exons['current_size'] = plus_exons.sort_values(by = ['transcript_id', 'exon_start']).groupby('transcript_id')['exon_length'].cumsum()
+    print("plus_exons before sorting and grouping:", plus_exons.head())  # Debug print statement
+    plus_exons['current_size'] = plus_exons.sort_values(by=['transcript_id', 'exon_start']).groupby('transcript_id')['exon_length'].cumsum()
     plus_exons['prior_size'] = plus_exons['current_size'] - plus_exons['exon_length']
-    orf_exons = pd.merge(orf_coord, plus_exons, left_on = 'pb_acc', right_on = 'transcript_id', how = 'inner')
-    orf_exons = orf_exons[(orf_exons['prior_size'] <= orf_exons['orf_start']) &  (orf_exons['orf_start'] <= orf_exons['current_size'])]
-    if len(orf_exons) ==0 :
+    print("orf_coord before merging:", orf_coord.head())  # Debug print statement
+    orf_exons = pd.merge(orf_coord, plus_exons, left_on='pb_acc', right_on='transcript_id', how='inner')
+    print("orf_exons after merging:", orf_exons.head())  # Debug print statement
+    orf_exons = orf_exons[(orf_exons['prior_size'] <= orf_exons['orf_start']) & (orf_exons['orf_start'] <= orf_exons['current_size'])]
+    if len(orf_exons) == 0:
         logging.warning("no coding start found")
         return orf_exons
     orf_exons['start_diff'] = orf_exons['orf_start'] - orf_exons['prior_size']
     orf_exons['cds_start'] = orf_exons['exon_start'] + orf_exons['start_diff'] - 1
-    orf_exons['gencode_atg'] = orf_exons.apply(lambda row : compare_start_plus(row, start_codons), axis = 1)
-    orf_exons.drop(columns=['exon_length', 'current_size', 'prior_size', 'start_diff'], inplace = True)
+    orf_exons['gencode_atg'] = orf_exons.apply(lambda row: compare_start_plus(row, start_codons), axis=1)
+    orf_exons.drop(columns=['exon_length', 'current_size', 'prior_size', 'start_diff'], inplace=True)
     return orf_exons
 
-def plus_mapping(exons, orf_coord, start_codons, pool, num_cores = 12):
+def plus_mapping(exons, orf_coord, start_codons, pool, num_cores=12):
 
     plus_exons = exons[exons['strand'] == '+'].copy()
     start_codons = start_codons[start_codons['strand'] == '+']
-    
+
     orf_chromosomes = plus_exons['seqname'].unique()
     ref_chromosomes = start_codons['seqname'].unique()
-    
+
     accession_map = plus_exons.groupby('seqname')['transcript_id'].apply(list).to_dict()
     orf_coord_list = [orf_coord[orf_coord['pb_acc'].isin(accession_map[csome])].copy() for csome in orf_chromosomes]
     exon_list = [plus_exons[plus_exons['seqname'] == csome].copy() for csome in orf_chromosomes]
-    
+
     start_codon_list = []
     for csome in orf_chromosomes:
         if csome in ref_chromosomes:
             start_codon_list.append(start_codons[start_codons['seqname'] == csome].copy())
         else:
             start_codon_list.append(start_codons.head())
-                                                 
-    # pool = multiprocessing.Pool(processes = num_cores)
+
     iterable = zip(orf_coord_list, exon_list, start_codon_list)
     plus_orf_list = pool.starmap(plus_mapping_single_chromosome, iterable)
+    return pd.concat(plus_orf_list, ignore_index=True)
 
     if len(plus_orf_list) > 0:
         plus_orfs = pd.concat(plus_orf_list)
@@ -169,28 +187,6 @@ def minus_mapping(exons, orf_coord, start_codons, pool, num_cores = 12):
     else: 
         minus_orfs = pd.DataFrame(columns = orf_coord.columns)
     return minus_orfs
-
-def read_orf(filename):
-    """
-    Reads the ORF file and formats the column names
-    Keep only predictions with score higher than protein-coding threshold
-
-    Parameters
-    ---------
-    filename : str
-        location of orf coordinate file
-
-    Returns
-    --------
-    orf: pandas DataFrame
-    """
-    orf = pd.read_csv(filename, sep = '\t')
-    orf[['pb_acc', 'misc', 'orf']] = orf['ID'].str.split('_', expand=True)
-    orf['pb_acc'] = orf['pb_acc'].str.split('|').str[0]
-    orf = orf.drop(labels=['misc',], axis=1)
-    orf.columns = ['ID','len', 'orf_strand', 'orf_frame', 'orf_start', 'orf_end', 'orf_len', 'fickett', 'hexamer', 'coding_score', 'pb_acc', 'orf_rank',]
-    logging.info(f"ORF file read \n{orf.head()}")
-    return orf
 
 def orf_calling(orf, num_orfs_per_accession = 1):
     """
@@ -302,11 +298,6 @@ def main():
                  'upstream_atgs', 'atg_rank', 'score_rank', 'orf_calling_confidence', 'atg_score', 'orf_score', 
                  'gene', 'FL_mean', 'CPM', 'has_stop_codon']]
     orfs.to_csv(results.output, index=False, sep='\t')
-
-if __name__ == "__main__":
-    main()
-
-#%%
 
 if __name__ == "__main__":
     main()

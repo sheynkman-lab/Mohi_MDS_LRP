@@ -1,15 +1,8 @@
 import pandas as pd
-import sys
 
-# Check if the correct number of arguments is provided
-if len(sys.argv) != 4:
-    print("Usage: python script.py <sample1_gtf_path> <sample2_gtf_path> <output_path>")
-    sys.exit(1)
-
-# Command-line arguments for input and output paths
-sample1_gtf_path = sys.argv[1]
-sample2_gtf_path = sys.argv[2]
-output_path = sys.argv[3]
+# Paths to GTF files
+wild_type_gtf_path = '07_make_cds_gtf/WT/WT_cds.gtf'  # Update with actual file path
+mutant_gtf_path = '07_make_cds_gtf/Q157R/Q157R_cds.gtf'  # Update with actual file path
 
 # Function to extract CPM from GTF file, ensuring each transcript per gene is retained
 def extract_cpm_from_gtf(gtf_path):
@@ -38,20 +31,21 @@ def extract_cpm_from_gtf(gtf_path):
     df = pd.DataFrame([(k[0], k[1], v) for k, v in data.items()], columns=['Gene', 'Transcript', 'CPM'])
     return df
 
-# Extract CPM data from Sample1 and Sample2 GTF files
-sample1_cpm_df = extract_cpm_from_gtf(sample1_gtf_path).rename(columns={'CPM': 'sample1_cpm'})
-sample2_cpm_df = extract_cpm_from_gtf(sample2_gtf_path).rename(columns={'CPM': 'sample2_cpm'})
+# Extract CPM data from wild_type and mutant GTF files
+wild_type_cpm_df = extract_cpm_from_gtf(wild_type_gtf_path).rename(columns={'CPM': 'wild_type_cpm'})
+mutant_cpm_df = extract_cpm_from_gtf(mutant_gtf_path).rename(columns={'CPM': 'mutant_cpm'})
 
-# Merge data on Gene and Transcript to align sample1 and sample2 CPM values without renaming transcripts
-cpm_df = pd.merge(sample1_cpm_df, sample2_cpm_df, on=['Gene', 'Transcript'], how='outer')
+# Merge data on Gene and Transcript to align wild_type and mutant CPM values
+cpm_df = pd.merge(wild_type_cpm_df, mutant_cpm_df, on=['Gene', 'Transcript'], how='outer')
 
 # Calculate delta_cpm
-cpm_df['delta_cpm'] = cpm_df['sample2_cpm'] - cpm_df['sample1_cpm']
+cpm_df['delta_cpm'] = cpm_df['mutant_cpm'] - cpm_df['wild_type_cpm']
 
 # Format delta_cpm to 5 decimal places
 cpm_df['delta_cpm'] = cpm_df['delta_cpm'].round(5)
 
 # Save final table to a tab-delimited file
+output_path = '18_LRP_summary/19_transcript_cpm.csv'
 cpm_df.to_csv(output_path, index=False, sep="\t")
 
-print(f"{output_path} has been created successfully.")
+print("transcript_cpm.csv has been created successfully.")

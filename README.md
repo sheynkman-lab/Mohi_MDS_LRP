@@ -88,7 +88,6 @@ python 00_scripts/01_sqanti_counts_isoquant.py \
 sbatch 00_scripts/02_isoquant_sqanti.sh
 sbatch 00_scripts/02_mando_sqanti.sh
 ```
-
 Isoquant's output works better for our pipeline than Mandalorion's. Futuer iterations of our pipeline will address this <br />
 ## Step 3 - Filter SQANTI
 Skipped for mouse. <br />
@@ -96,16 +95,19 @@ Skipped for mouse. <br />
 ## Step 4 - CPAT
 ```
 sbatch 00_scripts/04_cpat.sh
+sbatch 00_scripts/04_mando_cpat.sh
 ```
 
 ## Step 4 - Transcriptome Summary
 ```
 sbatch 00_scripts/04_transcriptome_summary.sh
+sbatch 00_scripts/04_mando_transcriptome_summary.sh
 ```
 
 ## Step 5 - ORF Calling
 ```
 sbatch 00_scripts/05_orf_calling.sh
+sbatch 00_scripts/05_mando_orf_calling.sh
 ```
 
 ## Step 6 - Refine ORF Database
@@ -118,9 +120,16 @@ sbatch 00_scripts/06_refine_orf_database.sh
 sbatch 00_scripts/07_make_cds_gtf.sh
 ```
 
-Skip middle steps from the typical LRP workflow here, because we are focused on transcripts.
+## Step 8 0 Rename CDS to Exon
+We need this step for SUPPA later in the pipeline. <br />
+```
+sbatch 00_scripts/08_rename_cds_to_exon.sh
+```
+Skip forward for this analysis (no MS and protein data here) <br />
+
 ## 17 - Track visualization
-This step is more run by run customizable, so I'll do it manually
+This step is more run by run customizable, so I'll do it manually. <br />
+Color by sample. <br />
 ```
 module purge
 module load gcc/11.4.0  
@@ -150,10 +159,68 @@ python ./00_scripts/17_add_rgb_to_bed.py \
 --output_dir 17_track_visualization/Q157R \
 --rgb 016,085,154
 ```
-
-## 18 - Gene & Transcript Expression tables
-First, I am creating tables that show gene expression, transcript expression, and transcript fractional abundance for mutant vs. wild type samples. Then, I will create a summary table. Becuase of the way PacBio accession numbers are assigned, we need to work around the mismatch. Here, I am using the wild type samples as a reference for accession numbers, then labeling any transcripts unique to the mutant samples as 'gene name + PB + number'. <br />
+Color by cpm. <br />
 ```
+python 00_scripts/17_track_add_rgb_colors_to_bed.py --name WT_cpm --bed_file 17_track_visualization/WT/WT_refined_cds.bed12
+
+python 00_scripts/17_track_add_rgb_colors_to_bed.py --name Q157R_cpm --bed_file 17_track_visualization/Q157R/Q157R_refined_cds.bed12
+```
+
+## 18 - SUPPA 
+```
+module purge
+module load gcc/11.4.0  
+module load openmpi/4.1.4
+module load python/3.11.4
+module load miniforge/24.3.0-py3.11
+module load R/4.4.1
+
+conda activate suppa
+
+# Generate splicing events
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf -o SUPPA/events -f ioi
+
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i 08_rename_cds_to_exon/WT/WT.cds_renamed_exon.gtf -o 18_SUPPA/LRP_events/WT.events -e SE SS MX RI FL -f ioe
+
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i 08_rename_cds_to_exon/Q157R/Q157R.cds_renamed_exon.gtf -o 18_SUPPA/LRP_events/Q157R.events -e SE SS MX RI FL -f ioe
+
+cd 18_SUPPA/LRP_events/
+
+#Put all the ioe events in the same file:
+awk '
+    FNR==1 && NR!=1 { while (/^<header>/) getline; }
+    1 {print}
+' *.ioe > all.LRP.events.ioe
+
+cd ../..
+
+# create expression table 
+python 00_scripts/18_suppa_expression_table.py -f 17_track_visualization/WT/WT_refined_cds.bed12 17_track_visualization/Q157R/Q157R_refined_cds.bed12 -s sample1 sample2 -o 18_SUPPA/combined.cpm
+
+# Calculate PSI values 
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerEvent --ioe-file 18_SUPPA/LRP_events/all.LRP.events.ioe --expression-file 18_SUPPA/combined.cpm -o 18_SUPPA/combined_local
+
+# Differential splicing 
+# Split the PSI and TPM files between the 2 conditions:
+Rscript 00_scripts/split_file.R 18_SUPPA/combined.cpm sample1 sample2 18_SUPPA/WT_sample1.tpm 18_SUPPA/Q157R_sample2.tpm -i
+Rscript 00_scripts/split_file.R 18_SUPPA/combined_local.psi sample1 sample2 18_SUPPA/WT_sample1.psi 18_SUPPA/Q157R_sample2.psi -e
+
+# Analyze differential splicing - creating an error now that I am trying to run with p-values, so reruning with ioi
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py diffSplice \
+    -m empirical \
+    -i 18_SUPPA/LRP_events/all.LRP.events.ioe \
+    -p 18_SUPPA/WT_sample1.psi 18_SUPPA/Q157R_sample2.psi \
+    -e 18_SUPPA/WT_sample1.tpm 18_SUPPA/Q157R_sample2.tpm \
+    -gc \
+    -o 18_SUPPA/diff_splice_events
+
+conda deactivate
+```
+## 18 - Gene & Transcript Expression tables
+First, I am creating tables that show gene expression, transcript expression, and transcript fractional abundance for mutant vs. wild type samples. Then, I will create a summary table. <br />
+```
+conda activate reference_tab
+
 # gene expression 
 python 00_scripts/18_gene_expression.py 17_track_visualization/WT/WT_refined_cds.bed12 17_track_visualization/Q157R/Q157R_refined_cds.bed12 18_LRP_summary/18_differential_gene_expression.csv
 
@@ -165,49 +232,21 @@ python 00_scripts/18_fractional_abundance.py 17_track_visualization/WT/WT_refine
 # gene and transcript summary table
 python 00_scripts/18_summary_table.py 18_LRP_summary/18_transcript_expression_fractional_abundance.csv 18_LRP_summary/18_summary_table.csv
 ```
-Finally, I am making list of genes and transcripts unique to the mutant samples. This will use both the unified naming scheme and have the original PacBio accession numbers for the mutant samples. <br />
+Now, I am making list of genes and transcripts unique to the mutant samples. <br />
 ```
 python 00_scripts/18_unique_transcripts.py 17_track_visualization/WT/WT_refined_cds.bed12 17_track_visualization/Q157R/Q157R_refined_cds.bed12 18_LRP_summary/18_unique_transcripts.csv
 ```
-
-## SUPPA - Alternative Splicing
+These tables will summarize the gene and transcript expression, as well as the splicing information from SUPPA. <br />
 ```
-module purge
-module load gcc/11.4.0  
-module load openmpi/4.1.4
-module load python/3.11.4
-module load miniforge/24.3.0-py3.11
-
-conda create -n suppa
-
-conda activate suppa
-
-# Prepare reference file
-> ./bin/salmon quant -t transcripts.fa -l ISF -a aln.bam -o SUPPA/salmon_quant
-
-# Generate splicing events
-python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf -o SUPPA/events -f ioi
-
-# create expression table
-python 00_scripts/suppa_expression_table.py -f 17_track_visualization/WT/WT_refined_cds.bed12 17_track_visualization/Q157R/Q157R_refined_cds.bed12 -s sample1 sample2 -o SUPPA/combined.cpm
-
-# Calculate PSI values
-python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerIsoform -g /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf -e SUPPA/WTsample.cpm -o SUPPA/WT
-
-python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerIsoform -g /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf -e SUPPA/Q157Rsample.cpm -o SUPPA/Q157R
-
-python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerIsoform -g /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.basic.annotation.gtf -e SUPPA/combined.cpm -o SUPPA/combined
-
-# Analyze differential splicing
-python /project/sheynkman/programs/SUPPA-2.4/suppa.py diffSplice -m empirical -p SUPPA/combined_isoform.psi -e SUPPA/combined.cpm -i SUPPA/events.ioi -o SUPPA/diff_splice_events -gc
+python 00_scripts/transcript_summary_interm.py 07_make_cds_gtf/WT/WT_cds.gtf 07_make_cds_gtf/Q157R/Q157R_cds.gtf 18_LRP_summary/transcript_cpm.csv
 ```
-
+Create summary tables for transcripts and SUPPA events. <br />
 ```
-python 00_scripts/transcript_summary_interm.py
-python 00_scripts/suppa_summary_interm.py
-python 00_scripts/suppa_plus_transcript.py
-
-
-python 00_scripts/AS_summary_table.py 18_LRP_summary/18_transcript_expression_fractional_abundance.csv SUPPA/diff_splice_events.psivec -o 18_LRP_summary/summary_table_with_AS.csv
+python 00_scripts/19_transcript_summary_interm.py
+python 00_scripts/19_suppa_summary_interm.py
+```
+Create a mapping file to map splice events to transcripts and combine information for summary table. <br />
+```
+python 00_scripts/19_suppa_plus_transcript.py
 ```
 

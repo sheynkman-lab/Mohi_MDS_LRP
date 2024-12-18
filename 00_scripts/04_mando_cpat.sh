@@ -26,20 +26,20 @@ export PATH="$HOME/.local/bin:$PATH"
 cpat \
    -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
    -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g 02_sqanti/isoquant/WT_isoquant_corrected.fasta \
+   -g 02_sqanti/mando/WT_mando_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o 04_CPAT/WT/WT \
-   2> WT_iso_cpat.error
+   -o 04_CPAT/mando/WT \
+   2> WT_mando_cpat.error
 
 # Q157R
 cpat \
    -x /project/sheynkman/external_data/CPAT_data/Mouse_Hexamer.tsv \
    -d /project/sheynkman/external_data/CPAT_data/Mouse_logitModel.RData \
-   -g 02_sqanti/isoquant/Q157R_isoquant_corrected.fasta \
+   -g 02_sqanti/mando/Q157R_mando_corrected.fasta \
    --min-orf=50 \
    --top-orf=50 \
-   -o 04_CPAT/Q157R/Q157R \
-   2> Q157R_iso_cpat.error
+   -o 04_CPAT/mando/Q157R \
+   2> Q157R_mando_cpat.error
 
 

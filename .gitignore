@@ -15,6 +15,7 @@ attempt1_isoseq_based/logs
 05_orf_calling/
 06_refine_orf_database/
 07_make_cds_gtf/
-SUPPA/
+08_rename_cds_to_exon/
+18_SUPPA/
 17_track_visualization/
 18_LRP_summary/
