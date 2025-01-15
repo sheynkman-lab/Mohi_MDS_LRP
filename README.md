@@ -88,7 +88,8 @@ python 00_scripts/01_sqanti_counts_isoquant.py \
 sbatch 00_scripts/02_isoquant_sqanti.sh
 sbatch 00_scripts/02_mando_sqanti.sh
 ```
-Isoquant's output works better for our pipeline than Mandalorion's. Futuer iterations of our pipeline will address this <br />
+Isoquant's output works better for our pipeline than Mandalorion's. Future iterations of our pipeline will address this <br />
+
 ## Step 3 - Filter SQANTI
 Skipped for mouse. <br />
 
@@ -120,7 +121,7 @@ sbatch 00_scripts/06_refine_orf_database.sh
 sbatch 00_scripts/07_make_cds_gtf.sh
 ```
 
-## Step 8 0 Rename CDS to Exon
+## Step 8 - Rename CDS to Exon
 We need this step for SUPPA later in the pipeline. <br />
 ```
 sbatch 00_scripts/08_rename_cds_to_exon.sh
@@ -250,3 +251,17 @@ Create a mapping file to map splice events to transcripts and combine informatio
 python 00_scripts/19_suppa_plus_transcript.py
 ```
 
+## Iso-Seq can now be run with mutliple samples and fits into our pipeline a little more smoothly, so I am re-running with Iso-Seq
+## 00 - Prepare
+```
+mkdir 01_isoseq
+mkdir 01_isoseq/merge
+mkdir 01_isoseq/cluster
+mkdir 01_isoseq/align
+mkdir 01_isoseq/collapse
+```
+
+## 01 - Iso-Seq
+```
+sbatch 00_scripts/01_isoseq_multisample.sh
+```
