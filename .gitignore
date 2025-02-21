@@ -2,6 +2,7 @@
 attempt1_isoseq_based/all_samples/
 attempt1_isoseq_based/wild_type/
 attempt1_isoseq_based/mutant/ 
+attempt2_mando&isoquant/
 01_reference_tables/
 02_make_gencode_database/
 attempt1_isoseq_based/18_diff_expression/
@@ -17,6 +18,14 @@ attempt1_isoseq_based/logs
 06_refine_orf_database/
 07_make_cds_gtf/
 08_rename_cds_to_exon/
+09_sqanti_protein/
+10_5p_utr/
+11_protein_classification/
+12_protein_gene_rename/
+13_protein_filter/
+14_protein_hybrid_database/
 18_SUPPA/
 17_track_visualization/
-18_LRP_summary/
+19_LRP_summary/
+all_orfs_mapped.tsv 
+slurm_logs/

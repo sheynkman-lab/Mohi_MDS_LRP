@@ -12,7 +12,7 @@
 #SBATCH --mail-user=yqy3cu@virginia.edu
 
 # Load modules
-module load apptainer/1.2.2
+module load apptainer/1.3.4
 module load gcc/11.4.0  
 module load openmpi/4.1.4
 module load python/3.11.4
@@ -29,11 +29,11 @@ conda activate reference_tab
 
 apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
     python 00_scripts/07_make_pacbio_cds_gtf.py \
-    --sample_gtf 02_sqanti/isoquant/WT_isoquant_corrected.gtf \
-    --agg_orfs 06_refine_orf_database/WT/WT_30_orf_refined.tsv \
-    --refined_orfs 05_orf_calling/WT/WT_best_ORF.tsv \
-    --pb_gene 04_transcriptome_summary/WT/pb_gene.tsv \
-    --output_cds 07_make_cds_gtf/WT/WT_cds.gtf
+    --sample_gtf 02_sqanti/MDS_corrected.gtf \
+    --agg_orfs 06_refine_orf_database/WT_30_orf_refined.tsv \
+    --refined_orfs 05_orf_calling/best_ORF_WT.tsv \
+    --pb_gene 04_transcriptome_summary/pb_gene.tsv \
+    --output_cds 07_make_cds_gtf/WT_cds.gtf
 "
 
 # Q157R
@@ -41,12 +41,12 @@ apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c
 
 apptainer exec /project/sheynkman/dockers/LRP/pb-cds-gtf_latest.sif /bin/bash -c " \
     python 00_scripts/07_make_pacbio_cds_gtf.py \
-    --sample_gtf 02_sqanti/isoquant/Q157R_isoquant_corrected.gtf \
-    --agg_orfs 06_refine_orf_database/Q157R/Q157R_30_orf_refined.tsv \
-    --refined_orfs 05_orf_calling/Q157R/Q157R_best_ORF.tsv \
-    --pb_gene 04_transcriptome_summary/Q157R/pb_gene.tsv \
-    --output_cds 07_make_cds_gtf/Q157R/Q157R_cds.gtf
+    --sample_gtf 02_sqanti/MDS_corrected.gtf \
+    --agg_orfs 06_refine_orf_database/Q157R_30_orf_refined.tsv \
+    --refined_orfs 05_orf_calling/best_ORF_Q157R.tsv \
+    --pb_gene 04_transcriptome_summary/pb_gene.tsv \
+    --output_cds 07_make_cds_gtf/Q157R_cds.gtf
 "
 
-exit
 conda deactivate
+module purge

@@ -11,7 +11,7 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=yqy3cu@virginia.edu
 
-module load apptainer/1.2.2
+module load apptainer/1.3.4
 module load gcc/11.4.0  
 module load openmpi/4.1.4
 module load python/3.11.4
@@ -23,16 +23,16 @@ conda activate refined-database-generation
 
 # WT
 python 00_scripts/06_refine_orf_database.py \
---name 06_refine_orf_database/WT/WT_30 \
---orfs 05_orf_calling/WT/WT_best_ORF.tsv \
---pb_fasta 02_sqanti/isoquant/WT_isoquant_corrected.fasta \
+--name 06_refine_orf_database/WT_30 \
+--orfs 05_orf_calling/best_ORF_WT.tsv \
+--pb_fasta 02_sqanti/MDS_corrected.fasta \
 --coding_score_cutoff 0.3 
 
 # Q157R
 python 00_scripts/06_refine_orf_database.py \
---name 06_refine_orf_database/Q157R/Q157R_30 \
---orfs 05_orf_calling/Q157R/Q157R_best_ORF.tsv \
---pb_fasta 02_sqanti/isoquant/Q157R_isoquant_corrected.fasta \
+--name 06_refine_orf_database/Q157R_30 \
+--orfs 05_orf_calling/best_ORF_Q157R.tsv \
+--pb_fasta 02_sqanti/MDS_corrected.fasta \
 --coding_score_cutoff 0.3
 
 conda deactivate 

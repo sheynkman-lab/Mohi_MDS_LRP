@@ -11,7 +11,7 @@ import os
 
 def get_accession_seqs(seqs):
     logging.info('getting accesssion sequences...')
-    pb_seqs = defaultdict()  # pb_acc -> transcript_seq
+    pb_seqs = defaultdict() # pb_acc -> transcript_seq
     redundant_accs = []
     for entry in seqs:
         seq = str(entry.seq)
@@ -21,14 +21,14 @@ def get_accession_seqs(seqs):
             redundant_accs.append(pb_acc)
         else:
             pb_seqs[pb_acc] = seq
-    return pb_seqs, redundant_accs
+    return pb_seqs,redundant_accs
     
     
 def combine_by_sequence(orfs, pb_seqs):
     logging.info('combining by sequence...')
     orfs = orfs[['pb_acc', 'orf_start', 'orf_end', 'orf_len']]
     # extract, translate, and aggregate protein sequences
-    pb_pseqs = defaultdict(lambda: list())  # protein_seq -> list of pb acc
+    pb_pseqs = defaultdict(lambda: list()) # protein_seq -> list of pb acc
     for index, row in orfs.iterrows():
         pb_acc, start, end, olen = list(row)
         seq = pb_seqs[pb_acc]
@@ -37,24 +37,23 @@ def combine_by_sequence(orfs, pb_seqs):
         pb_pseqs[prot_seq].append(pb_acc)
     return pb_pseqs
 
-def order_acc_numerically(accs):
-    logging.info('Ordering Accessions Numerically...')
-    # order accessions by numeric components
+
+def order_pb_acc_numerically(accs):
+    logging.info('Ordering PB Accession Numerically...')
+    # order pb accessions by numbers
     accs_numerical = []
     for acc in accs:
-        # Assuming the accession format is ENSMUSTXX.XX
-        parts = acc.split('.')
-        if len(parts) != 2:
-            logging.warning(f"Unexpected accession format: {acc}")
-            continue
-        gene_idx = int(parts[1])  # Assuming the second part is numeric
-        accs_numerical.append((acc, gene_idx))  # Keep the original accession for final sorting
-    # Sort by gene index (the numeric part)
-    accs_numerical.sort(key=lambda x: x[1])
-    # Return only the sorted accessions
-    sorted_accs = [acc for acc, _ in accs_numerical]
-    return sorted_accs
+        pb, gene_idx, iso_idx = acc.split('.')
+        gene_idx = int(gene_idx)
+        iso_idx = int(iso_idx)
+        accs_numerical.append([gene_idx, iso_idx])
+    accs_numerical.sort()
+    num_sorted_accs = ['PB.' + str(g) + '.' + str(i) for g, i in accs_numerical]
+    return num_sorted_accs
 
+
+
+    
 
 def aggregate_results(pacbio, orfs):
     logging.info('Aggregating Results')
@@ -65,13 +64,13 @@ def aggregate_results(pacbio, orfs):
         return total
     
     pacbio['accessions'] = pacbio['pb_accs'].str.split('|')
-    pacbio['base_acc'] = pacbio['accessions'].apply(lambda x: x[0])
+    pacbio['base_acc'] = pacbio['accessions'].apply(lambda x : x[0])
     
-    fl_dict = pd.Series(orfs.FL.values, index=orfs.pb_acc).to_dict()
-    cpm_dict = pd.Series(orfs.CPM.values, index=orfs.pb_acc).to_dict()
+    fl_dict = pd.Series(orfs.FL.values,index=orfs.pb_acc).to_dict()
+    cpm_dict = pd.Series(orfs.CPM.values,index=orfs.pb_acc).to_dict()
     
-    pacbio['FL'] = pacbio['accessions'].apply(lambda accs: get_total(accs, fl_dict))
-    pacbio['CPM'] = pacbio['accessions'].apply(lambda accs: get_total(accs, cpm_dict))
+    pacbio['FL'] = pacbio['accessions'].apply(lambda accs : get_total(accs, fl_dict))
+    pacbio['CPM'] = pacbio['accessions'].apply(lambda accs : get_total(accs, cpm_dict))
     return pacbio
 
 def filter_orf_scores(orfs, cutoff):
@@ -114,9 +113,9 @@ def string_to_boolean(string):
 def main():
     parser = argparse.ArgumentParser(description='Proccess ORF related file locations')
     parser.add_argument('--name', action='store', dest='name', help='sample name')
-    parser.add_argument('-io', '--orfs', action='store', dest='orfs', help='ORF coordinate input file location')
-    parser.add_argument('-if', '--pb_fasta', action='store', dest='pb_fasta', help='PacBio fasta sequence input file location')
-    parser.add_argument('-cut', '--coding_score_cutoff', dest='cutoff', type=float, default=0.0, help='CPAT coding score cutoff. remove all below')
+    parser.add_argument('-io', '--orfs',action='store', dest= 'orfs',help='ORF coordinate input file location')
+    parser.add_argument('-if', '--pb_fasta', action = 'store', dest='pb_fasta', help='PacBio fasta sequence input file location')
+    parser.add_argument('-cut', '--coding_score_cutoff', dest = 'cutoff', type = float, default = 0.0, help='CPAT coding score cutoff. remove all below')
     results = parser.parse_args()
     name = results.name
     logging.info('Reading Fasta File...')
@@ -130,30 +129,32 @@ def main():
     # only keep orfs that have a stop codon
     orfs = orfs.query('has_stop_codon')
     
-    pb_seqs, redundant_accs = get_accession_seqs(seqs)
+    pb_seqs,redundant_accs = get_accession_seqs(seqs)
     pb_pseqs = combine_by_sequence(orfs, pb_seqs)
     
     # Save combined results
+
     with open(f'{name}_combined.tsv', 'w') as ofile, open(f'{name}_combined.fasta', 'w') as ofile2:
         ofile.write('protein_sequence\tpb_accs\n')
         for seq, accs in pb_pseqs.items():
-            accs_sorted = order_acc_numerically(accs)
+            accs_sorted = order_pb_acc_numerically(accs)
             accs_str = '|'.join(accs_sorted)
             ofile.write(seq + '\t' + accs_str + '\n')
             ofile2.write('>' + accs_str + '\n' + seq + '\n')
     
-    pacbio = pd.read_csv(f'{name}_combined.tsv', sep='\t')
+    
+    pacbio = pd.read_csv(f'{name}_combined.tsv', sep = '\t')
     seqs = SeqIO.parse(open(f'{name}_combined.fasta'), 'fasta')
     os.remove(f'{name}_combined.tsv')
     os.remove(f'{name}_combined.fasta')
 
+    
     pacbio = aggregate_results(pacbio, orfs)
     orfs = orfs[['pb_acc', 'coding_score', 'orf_score', 'orf_calling_confidence', 'upstream_atgs', 'gene']]
-    pacbio = pd.merge(pacbio, orfs, how='inner', left_on='base_acc', right_on='pb_acc')
-    
+    pacbio = pd.merge(pacbio, orfs, how = 'inner', left_on = 'base_acc', right_on = 'pb_acc')
     logging.info('Writing refined database fasta results...')
-    pb_gene = pd.Series(orfs.gene.values, index=orfs.pb_acc).to_dict()
-    base_map = pd.Series(pacbio.base_acc.values, index=pacbio.pb_accs).to_dict()
+    pb_gene = pd.Series(orfs.gene.values,index=orfs.pb_acc).to_dict()
+    base_map = pd.Series(pacbio.base_acc.values,index=pacbio.pb_accs).to_dict()
     with open(f'{name}_orf_refined.fasta', 'w') as ofile:
         for entry in seqs:
             seq = str(entry.seq)
@@ -162,9 +163,9 @@ def main():
             gene = pb_gene[base_acc]
             ofile.write(f'>pb|{base_acc}|fullname GN={gene}\n{seq}\n')
     
-    logging.info('Writing refined database tsv results...')
-    pacbio = pacbio[['pb_accs', 'base_acc', 'coding_score', 'orf_calling_confidence', 'upstream_atgs', 'orf_score', 'gene', 'FL', 'CPM']]
-    pacbio.to_csv(f'{name}_orf_refined.tsv', sep='\t', index=False) 
+    logging.info('Writing refined datavase tsv results...')
+    pacbio = pacbio[['pb_accs', 'base_acc', 'coding_score','orf_calling_confidence','upstream_atgs','orf_score','gene','FL', 'CPM']]
+    pacbio.to_csv(f'{name}_orf_refined.tsv', sep = '\t', index = False) 
     logging.info('Refine Database Complete')
     logging.info('************************')
     

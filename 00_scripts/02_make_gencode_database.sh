@@ -15,18 +15,20 @@ module purge
 module load gcc/11.4.0
 module load openmpi/4.1.4
 module load python/3.11.4 
-module load anaconda/2023.07-py3.11 
+module load miniforge/24.3.0-py3.11
 module load perl/5.36.0 
 module load star/2.7.9a 
 module load kallisto/0.48.0
 
+source $(conda info --base)/etc/profile.d/conda.sh
+
 conda activate make_database
 
-python ./00_scripts/02_make_gencode_database.py \
+python 00_scripts/02_make_gencode_database.py \
 --gencode_fasta /project/sheynkman/external_data/GENCODE_M35/gencode.vM35.pc_translations.fa \
---protein_coding_genes ./01_reference_tables/protein_coding_genes.txt \
---output_fasta ./02_make_gencode_database/gencode_clusters.fasta \
---output_cluster ./02_make_gencode_database/gencode_isoname_clusters.tsv
-
+--protein_coding_genes 01_reference_tables/protein_coding_genes.txt \
+--output_fasta 02_make_gencode_database/gencode_clusters.fasta \
+--output_cluster 02_make_gencode_database/gencode_isoname_clusters.tsv
 
 conda deactivate
+module purge

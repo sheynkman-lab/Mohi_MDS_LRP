@@ -14,25 +14,17 @@
 # Load necessary modules (if needed)
 module purge
 module load gcc/11.4.0
-module load mamba/22.11.1-4
 module load miniforge/24.3.0-py3.11
 module load openmpi/4.1.4
 module load python/3.11.4
 
 conda activate transcriptome_sum
 
-# WT
 python 00_scripts/04_transcriptome_summary_gene_table_only.py \
---sq_out 02_sqanti/isoquant/WT_isoquant_classification.txt \
+--sq_out 02_sqanti/MDS_classification.txt \
 --ensg_to_gene 01_reference_tables/ensg_gene.tsv \
 --enst_to_isoname 01_reference_tables/enst_isoname.tsv \
---odir 04_transcriptome_summary/WT/
-
-# Q157R
-python 00_scripts/04_transcriptome_summary_gene_table_only.py \
---sq_out 02_sqanti/isoquant/Q157R_isoquant_classification.txt \
---ensg_to_gene 01_reference_tables/ensg_gene.tsv \
---enst_to_isoname 01_reference_tables/enst_isoname.tsv \
---odir 04_transcriptome_summary/Q157R/
+--odir 04_transcriptome_summary
 
 conda deactivate
+module
