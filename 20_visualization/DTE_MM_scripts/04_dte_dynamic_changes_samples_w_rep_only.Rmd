@@ -1,0 +1,409 @@
+---
+title: "Dynamic changes of DTE isoforms fitting specific patterns"
+author: "Madison Mehlferber"
+date: "2024-09-16"
+output: html_document
+---
+
+Load the needed packages 
+```{r}
+library(here)
+library(edgeR)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(pheatmap)
+library(RColorBrewer)
+```
+
+Define the project root as the current working directory
+```{r}
+# Define the project root as the current working directory
+project_root <- '/Volumes/sheynkman/projects/Mohi_MDS_LRP/20_visualization/DTE_MM_scripts'
+
+# Define the path for the results folder inside the project root (on the same level as the scripts folder)
+results_folder <- file.path(project_root, "results")
+
+# Create the results folder if it doesn't exist
+if (!file.exists(results_folder)) {
+  dir.create(results_folder)
+}
+
+# Define the path for the "01_experiment" subfolder within results
+experiment_subfolder <- file.path(results_folder, "10_differential_transcript_expression")
+if (!file.exists(experiment_subfolder)) {
+  dir.create(experiment_subfolder)
+}
+
+# Define the subdirectories for plots and output_table inside "01_experiment"
+plots_subfolder <- file.path(experiment_subfolder, "plots")
+output_table_subfolder <- file.path(experiment_subfolder, "output_table")
+
+# Create the plots subfolder if it doesn't exist
+if (!file.exists(plots_subfolder)) {
+  dir.create(plots_subfolder)
+}
+
+# Create the output_table subfolder if it doesn't exist
+if (!file.exists(output_table_subfolder)) {
+  dir.create(output_table_subfolder)
+}
+
+# Print paths for debugging
+cat("Results folder path:", results_folder, "\n")
+cat("Experiment folder path:", experiment_subfolder, "\n")
+cat("Plots subfolder path:", plots_subfolder, "\n")
+cat("Output table subfolder path:", output_table_subfolder, "\n")
+```
+
+Read in and prepare the data
+```{r}
+counts <- read.csv("/Volumes/sheynkman/projects/Mohi_MDS_LRP/01_isoseq/collapse/merged.collapsed.flnc_count.txt", header = TRUE, row.names = 1)
+group <- factor(c("Q157R", "Q157R", "Q157R", "WT", "WT", "WT"))
+dge <- DGEList(counts = counts, group = group)
+cpm_matrix <- cpm(dge, log = FALSE)
+cpm_df <- as.data.frame(cpm_matrix)
+cpm_df$transcript_id <- rownames(cpm_df)
+
+cpm_long <- cpm_df %>%
+  pivot_longer(cols = -transcript_id, names_to = "sample", values_to = "CPM") %>%
+  mutate(group = case_when(
+    str_detect(sample, "BioSample_[1-3]") ~ "Q157R",
+    str_detect(sample, "BioSample_[4-6]") ~ "WT",
+    TRUE ~ NA_character_
+  ))
+
+dynamic_transcripts <- read.table(
+  file.path(output_table_subfolder, "transcripts_w_dynamic_via_group_comparison_top500.txt"), 
+  header = TRUE, sep = "\t")
+
+# Load annotations
+gene_map <- read.table("/Volumes/sheynkman/projects/Mohi_MDS_LRP/01_reference_tables/ensg_gene.tsv", header = TRUE, sep = "\t")
+colnames(gene_map) <- c("associated_gene", "gene_name")
+
+sqanti <- read.table("/Volumes/sheynkman/projects/Mohi_MDS_LRP/02_sqanti/MDS_classification.txt", sep = "\t", header = TRUE)
+sqanti <- sqanti %>%
+  mutate(display_name = case_when(
+    !is.na(associated_transcript) & associated_transcript != "novel" ~ associated_transcript,
+    grepl("^novelGene_", associated_gene) ~ associated_gene,
+    TRUE ~ associated_gene
+  ))
+
+# Merge metadata
+dynamic_transcripts <- dynamic_transcripts %>%
+  left_join(gene_map, by = "associated_gene") %>%
+  left_join(sqanti[, c("isoform", "display_name")], by = c("isoform" = "isoform"))
+
+dynamic_transcripts$display_name <- gsub("\\.\\d+$", "", dynamic_transcripts$display_name)
+gene_map$gene_name <- gsub("\\.\\d+$", "", gene_map$gene_name)
+
+```
+
+Merge with dynamic transcripts
+```{r}
+dynamic_cpm_long <- cpm_long %>%
+  filter(transcript_id %in% dynamic_transcripts$isoform) %>%
+  left_join(dynamic_transcripts %>% select(isoform, associated_gene, gene_name, display_name), 
+            by = c("transcript_id" = "isoform"))
+```
+Plot example: per gene
+```{r}
+# Preview one gene manually
+gene_of_interest <- "ENSMUSG00000023025.17"  # Replace with a gene of your choice
+
+# Optionally convert to gene symbol if available
+symbol <- gene_map %>%
+  filter(associated_gene == gene_of_interest) %>%
+  pull(gene_name) %>%
+  unique()
+
+plot_title <- if (length(symbol) > 0 && !is.na(symbol) && symbol != "") {
+  paste("Isoform Expression for", symbol, "(WT vs Q157R)")
+} else {
+  paste("Isoform Expression for", gene_of_interest, "(WT vs Q157R)")
+}
+
+gene_plot_data <- dynamic_cpm_long %>%
+  filter(associated_gene == gene_of_interest)
+
+# Ensure WT is on the left, Q157R on the right
+gene_plot_data$group <- factor(gene_plot_data$group, levels = c("WT", "Q157R"))
+
+ggplot(gene_plot_data, aes(x = group, y = CPM, color = group)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_wrap(~ display_name, scales = "free") +
+  theme_minimal() +
+  labs(title = plot_title,
+       x = "Condition",
+       y = "CPM") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+Plot isoform expression per gene
+```{r}
+# Add group for plotting
+dynamic_transcripts$group <- ifelse(dynamic_transcripts$logFC > 0, "Q157R", "WT")
+dynamic_transcripts$group <- factor(dynamic_transcripts$group, levels = c("WT", "Q157R"))
+
+# Identify genes with multiple dynamic isoforms
+non_unique <- dynamic_transcripts %>%
+  filter(duplicated(associated_gene) | duplicated(associated_gene, fromLast = TRUE)) %>%
+  arrange(associated_gene)
+
+genes_to_plot <- unique(non_unique$associated_gene)
+
+# Loop through genes and generate plots
+for (gene in genes_to_plot) {
+  gene_data <- dynamic_transcripts %>% filter(associated_gene == gene)
+  
+  # Ensure group factor levels are set consistently
+  gene_data$group <- factor(gene_data$group, levels = c("WT", "Q157R"))
+  
+  gene_symbol <- unique(gene_data$gene_name)[1]
+  
+  title_label <- if (!is.na(gene_symbol) && gene_symbol != "") {
+    paste("Expression of", gene_symbol, "Isoforms (WT vs Q157R)")
+  } else {
+    paste("Expression of", gene, "Isoforms (WT vs Q157R)")
+  }
+
+  p <- ggplot(gene_data, aes(x = group, y = logCPM, color = group)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.2, alpha = 0.7) +
+    facet_wrap(~ display_name, scales = "free") +
+    theme_minimal() +
+    labs(title = title_label,
+         x = "Condition", 
+         y = "logCPM") +
+    theme(axis.text.x = element_text(angle = 90))
+
+  filename <- paste0(gsub("[:/\\\\\\s]", "_", ifelse(!is.na(gene_symbol), gene_symbol, gene)), "_isoform_expression_WT_vs_Q157R.pdf")
+
+  ggsave(file.path(plots_subfolder, filename),
+         plot = p, width = 6, height = 5)
+}
+```
+Heat map for filtered transcripts - top 500
+```{r}
+transcript_matrix <- dynamic_cpm_long %>%
+  select(transcript_id, sample, CPM) %>%
+  pivot_wider(names_from = sample, values_from = CPM) %>%
+  column_to_rownames("transcript_id")
+
+transcript_matrix_log2 <- log2(transcript_matrix + 1)
+colnames(transcript_matrix_log2) <- c("Q157R_1", "Q157R_2", "Q157R_3", "WT_1", "WT_2", "WT_3")
+
+annotation_col <- data.frame(Group = c(rep("Q157R", 3), rep("WT", 3)))
+rownames(annotation_col) <- colnames(transcript_matrix_log2)
+
+pheatmap(transcript_matrix_log2,
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         scale = "row",
+         show_rownames = FALSE,
+         annotation_col = annotation_col,
+         annotation_colors = list(
+           Group = c("Q157R" = "#336B87", "WT" = "#E99787")
+         ),
+         main = "Dynamic Transcript Expression (WT vs Q157R)")
+
+pdf(file.path(plots_subfolder, "dynamic_transcript_heatmap_WT_vs_Q157R.pdf"), width = 8, height = 10)
+print(last_plot())
+dev.off()
+```
+Heat map for filtered genes - top 500
+```{r}
+# Average transcript CPMs to gene CPMs
+gene_matrix <- dynamic_cpm_long %>%
+  group_by(associated_gene, sample) %>%
+  summarise(mean_CPM = mean(CPM, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = sample, values_from = mean_CPM) %>%
+  column_to_rownames("associated_gene")
+
+# Log2 transform
+gene_matrix_log2 <- log2(gene_matrix + 1)
+
+# Rename sample columns
+colnames(gene_matrix_log2) <- c("Q157R_1", "Q157R_2", "Q157R_3", "WT_1", "WT_2", "WT_3")
+
+# Create annotation dataframe
+annotation_col_gene <- data.frame(
+  Group = c(rep("Q157R", 3), rep("WT", 3))
+)
+rownames(annotation_col_gene) <- colnames(gene_matrix_log2)
+
+# Make the plot object
+p_gene <- pheatmap(gene_matrix_log2,
+                   cluster_rows = TRUE,
+                   cluster_cols = TRUE,
+                   scale = "row",
+                   show_rownames = TRUE,
+                   annotation_col = annotation_col,
+                   annotation_colors = list(
+                     Group = c("Q157R" = "#336B87", "WT" = "#E99787")
+                     ),
+                   main = "Dynamic Gene Expression (WT vs Q157R)")
+
+# Save gene heatmap
+pdf(file.path(plots_subfolder, "dynamic_gene_heatmap_WT_vs_Q157R.pdf"), width = 8, height = 10)
+print(p_gene)  # important to print the plot inside the pdf
+dev.off()
+
+```
+Heat map for filtered transcripts - top 50
+```{r}
+# Select top 50 dynamic transcripts
+top_dynamic_transcripts <- dynamic_transcripts %>%
+  arrange(PValue) %>%  # You could also use logFC or F if you prefer
+  slice_head(n = 50)
+
+# Filter CPM long data to only top 50 transcripts
+dynamic_cpm_long_top50 <- dynamic_cpm_long %>%
+  filter(transcript_id %in% top_dynamic_transcripts$isoform)
+
+# Reshape back to wide format: transcript_id × sample
+transcript_matrix <- dynamic_cpm_long_top50 %>%
+  select(transcript_id, sample, CPM) %>%
+  pivot_wider(names_from = sample, values_from = CPM) %>%
+  column_to_rownames("transcript_id")
+
+# Log2 transform
+transcript_matrix_log2 <- log2(transcript_matrix + 1)
+
+# Rename sample columns
+colnames(transcript_matrix_log2) <- c("Q157R_1", "Q157R_2", "Q157R_3", "WT_1", "WT_2", "WT_3")
+
+# Create annotation dataframe
+annotation_col <- data.frame(
+  Group = c(rep("Q157R", 3), rep("WT", 3))
+)
+rownames(annotation_col) <- colnames(transcript_matrix_log2)
+
+# Make and save the plot
+p <- pheatmap(transcript_matrix_log2,
+              cluster_rows = TRUE,
+              cluster_cols = TRUE,
+              scale = "row",
+              show_rownames = TRUE,  # Now show rownames since only 50!
+              annotation_col = annotation_col,
+                   annotation_colors = list(
+                     Group = c("Q157R" = "#336B87", "WT" = "#E99787")
+                     ),
+              main = "Top 50 Dynamic Transcripts (WT vs Q157R)")
+
+pdf(file.path(plots_subfolder, "dynamic_transcript_heatmap_top50_WT_vs_Q157R.pdf"), width = 8, height = 10)
+print(p)
+dev.off()
+```
+Heat map for filtered genes - top 50
+```{r}
+# Average transcript CPMs to gene CPMs
+gene_matrix <- dynamic_cpm_long_top50 %>%
+  group_by(associated_gene, sample) %>%
+  summarise(mean_CPM = mean(CPM, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = sample, values_from = mean_CPM) %>%
+  column_to_rownames("associated_gene")
+
+# Log2 transform
+gene_matrix_log2 <- log2(gene_matrix + 1)
+
+# Rename sample columns
+colnames(gene_matrix_log2) <- c("Q157R_1", "Q157R_2", "Q157R_3", "WT_1", "WT_2", "WT_3")
+
+# Create annotation dataframe
+annotation_col_gene <- data.frame(
+  Group = c(rep("Q157R", 3), rep("WT", 3))
+)
+rownames(annotation_col_gene) <- colnames(gene_matrix_log2)
+
+# Make and save the plot
+p_gene <- pheatmap(gene_matrix_log2,
+                   cluster_rows = TRUE,
+                   cluster_cols = TRUE,
+                   scale = "row",
+                   show_rownames = TRUE,
+                   annotation_col = annotation_col,
+                   annotation_colors = list(
+                     Group = c("Q157R" = "#336B87", "WT" = "#E99787")
+                     ),
+                   main = "Top 50 Dynamic Genes (WT vs Q157R)")
+
+pdf(file.path(plots_subfolder, "dynamic_gene_heatmap_top50_WT_vs_Q157R.pdf"), width = 8, height = 10)
+print(p_gene)
+dev.off()
+```
+Create stacked bar plots
+```{r}
+# Additional Libraries
+library(RColorBrewer)
+
+# 1. Only plot genes from non_unique list
+genes_to_plot <- unique(non_unique$associated_gene)
+
+# 2. Filter the averaged fractional abundance to these genes
+average_frac_abundance_filtered <- average_frac_abundance %>%
+  filter(Gene %in% genes_to_plot)
+
+# 3. Define green and brown colors
+custom_colors <- c("Q157R" = "#336B87",  # ForestGreen
+                   "WT" = "#E99787")     # SaddleBrown
+
+# 4. Loop through genes and plot stacked bar plots
+for (gene in genes_to_plot) {
+  gene_data <- average_frac_abundance_filtered %>% filter(Gene == gene)
+  
+  if (nrow(gene_data) == 0) next
+  
+  p <- ggplot(gene_data, aes(x = group, y = avg_abundance, fill = Transcript)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(title = paste("Stacked Barplot for", gene, "(WT vs Q157R)"),
+         x = "Group", y = "Average Fractional Abundance") +
+    theme_minimal() +
+    guides(fill = guide_legend(reverse = TRUE)) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_manual(values = colorRampPalette(c("#336B87", "#E99787"))(length(unique(gene_data$Transcript))))  # green to brown gradient
+  
+  # Save each plot
+  ggsave(file.path(plots_subfolder, paste0(gene, "_stacked_barplot_WT_vs_Q157R.pdf")),
+         plot = p, width = 6, height = 5)
+}
+
+
+
+```
+
+Replicate-level stacked bar plots
+```{r}
+# 1. Loop through genes again, now for replicate-level plotting
+for (gene in genes_to_plot) {
+  gene_data_rep <- frac_long %>%
+    filter(associated_gene == gene) %>%
+    mutate(Sample_Group = paste(group, sample, sep = "_"))
+  
+  if (nrow(gene_data_rep) == 0) next
+  
+  # 2. Define colors across isoforms again
+  n_transcripts <- length(unique(gene_data_rep$transcript_id))
+  mycolors_rep <- colorRampPalette(c("#336B87", "#E99787"))(n_transcripts)  # green to brown gradient
+  
+  # 3. Plot
+  p_rep <- ggplot(gene_data_rep, aes(x = Sample_Group, y = fractional_abundance, fill = transcript_id)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(title = paste("Replicate-level Stacked Barplot for", gene, "(WT vs Q157R)"),
+         x = "Sample", 
+         y = "Fractional Abundance") +
+    theme_minimal() +
+    scale_fill_manual(values = mycolors_rep) +
+    guides(fill = guide_legend(reverse = TRUE, title = "Transcript")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_y_continuous(expand = c(0, 0))
+  
+  # Save replicate plot
+  ggsave(file.path(plots_subfolder, paste0(gene, "_replicate_stacked_barplot_WT_vs_Q157R.pdf")),
+         plot = p_rep, width = 8, height = 5)
+}
+```

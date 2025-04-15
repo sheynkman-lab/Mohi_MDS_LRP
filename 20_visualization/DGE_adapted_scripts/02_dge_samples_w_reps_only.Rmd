@@ -1,0 +1,103 @@
+---
+title: "spline testing with samples with replicates (DGE)"
+author: "Madison Mehlferber - adapted by Emily F. Watts"
+date: "2024-05-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(dplyr)
+library(tidyverse)
+library(edgeR)
+library(splines)
+library(knitr)
+```
+Set up directories
+```{r setup_directories}
+project_root <- '/Volumes/sheynkman/projects/Mohi_MDS_LRP/20_visualization/DGE_adapted_scripts'
+
+results_folder <- file.path(project_root, "results")
+if (!file.exists(results_folder)) dir.create(results_folder)
+
+experiment_subfolder <- file.path(results_folder, "10_differential_gene_expression")
+if (!file.exists(experiment_subfolder)) dir.create(experiment_subfolder)
+
+plots_subfolder <- file.path(experiment_subfolder, "plots")
+output_table_subfolder <- file.path(experiment_subfolder, "output_table")
+if (!file.exists(plots_subfolder)) dir.create(plots_subfolder)
+if (!file.exists(output_table_subfolder)) dir.create(output_table_subfolder)
+
+cat("Results folder path:", results_folder, "\n")
+cat("Experiment folder path:", experiment_subfolder, "\n")
+cat("Plots subfolder path:", plots_subfolder, "\n")
+cat("Output table subfolder path:", output_table_subfolder, "\n")
+```
+Load gene-level data
+```{r load_data}
+counts <- read.delim("/Volumes/sheynkman/projects/Mohi_MDS_LRP/01_isoseq/gene_level_counts.txt",
+                     header = TRUE, row.names = 1)
+
+group <- factor(c("Q157R", "Q157R", "Q157R", "WT", "WT", "WT"))
+
+dge_gene <- DGEList(counts = counts, group = group)
+dge_gene <- dge_gene[filterByExpr(dge_gene), , keep.lib.sizes = FALSE]
+dge_gene <- calcNormFactors(dge_gene)
+
+cpm <- cpm(dge_gene, log = FALSE)
+```
+DGE analysis
+```{r dge_analysis}
+design <- model.matrix(~ group)
+dge_gene <- estimateDisp(dge_gene, design)
+fit <- glmQLFit(dge_gene, design)
+result <- glmQLFTest(fit, coef = 2)
+
+deg_genes <- topTags(result, n = Inf)$table
+
+write.table(deg_genes,
+            file = file.path(output_table_subfolder, "gene_DEG_results_all_reps.txt"),
+            sep = "\t", quote = FALSE, row.names = TRUE)
+```
+Top DE genes and filtering
+```{r top_genes}
+tab <- as.data.frame(topTags(result, n = 500))
+tab$gene <- rownames(tab)
+
+tab_pval <- tab %>% filter(PValue < 0.01)
+tab_fdr  <- tab %>% filter(FDR < 0.09)
+```
+Unique genes (all here)
+```{r unique_genes}
+unique_gene_names <- unique(tab$gene)
+```
+Clean table of gene names
+```{r clean_table}
+top_gene_names_df <- data.frame(Gene_Name = head(unique_gene_names, 100))
+knitr::kable(top_gene_names_df)
+
+num_rows <- ceiling(length(unique_gene_names) / 5)
+gene_names_matrix <- matrix(unique_gene_names, ncol = 5, byrow = TRUE)
+gene_names_matrix <- gene_names_matrix[1:num_rows, ]
+top_gene_names_df <- as.data.frame(gene_names_matrix)
+
+knitr::kable(top_gene_names_df,
+             col.names = c("Gene_1", "Gene_2", "Gene_3", "Gene_4", "Gene_5"))
+```
+Find genes with multiple entries 
+```{r multiple_entries}
+non_unique <- tab %>%
+  filter(duplicated(gene) | duplicated(gene, fromLast = TRUE)) %>%
+  arrange(gene)
+non_unique
+```
+Save output tables
+```{r save_results}
+write.table(tab,
+            file = file.path(output_table_subfolder, "genes_w_dynamic_via_group_comparison_top500.txt"),
+            sep = "\t", row.names = FALSE)
+
+write.table(non_unique,
+            file = file.path(output_table_subfolder, "genes_with_multiple_dynamic_hits_top500.txt"),
+            sep = "\t", row.names = FALSE)
+```

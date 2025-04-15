@@ -1,0 +1,210 @@
+---
+title: "08_splinefitted_curves"
+author: "Madison Mehlferber"
+date: "2024-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# read in the needed packages 
+library(edgeR)
+library(here)
+library(splines)
+library(tidyverse)   # <- loads dplyr, tidyr, readr, tibble automatically
+library(rtracklayer)
+
+```
+
+# set up the needed directories 
+```{r}
+# Define the project root as the current working directory
+project_root <- '/Volumes/sheynkman/projects/Mohi_MDS_LRP/20_visualization/DTE_MM_scripts'
+
+# Define the path for the results folder inside the project root (on the same level as the scripts folder)
+results_folder <- file.path(project_root, "results")
+
+# Create the results folder if it doesn't exist
+if (!file.exists(results_folder)) {
+  dir.create(results_folder)
+}
+
+# Define the path for the "01_experiment" subfolder within results
+experiment_subfolder <- file.path(results_folder, "10_differential_transcript_expression")
+if (!file.exists(experiment_subfolder)) {
+  dir.create(experiment_subfolder)
+}
+
+# Define the subdirectories for plots and output_table inside "01_experiment"
+plots_subfolder <- file.path(experiment_subfolder, "plots")
+output_table_subfolder <- file.path(experiment_subfolder, "output_table")
+
+# Create the plots subfolder if it doesn't exist
+if (!file.exists(plots_subfolder)) {
+  dir.create(plots_subfolder)
+}
+
+# Create the output_table subfolder if it doesn't exist
+if (!file.exists(output_table_subfolder)) {
+  dir.create(output_table_subfolder)
+}
+
+# Print paths for debugging
+cat("Results folder path:", results_folder, "\n")
+cat("Experiment folder path:", experiment_subfolder, "\n")
+cat("Plots subfolder path:", plots_subfolder, "\n")
+cat("Output table subfolder path:", output_table_subfolder, "\n")
+```
+
+
+Read in the needed data files 
+```{r}
+counts <- read.csv("/Volumes/sheynkman/projects/Mohi_MDS_LRP/01_isoseq/collapse/merged.collapsed.flnc_count.txt", header=TRUE, row.names=1)
+group <- factor(c("Q157R", "Q157R", "Q157R", "WT", "WT", "WT"))
+
+# Create DGEList and filter lowly expressed transcripts
+dge_transcript <- DGEList(counts = counts, group = group)
+dge_transcript <- dge_transcript[filterByExpr(dge_transcript), , keep.lib.sizes = FALSE]
+dge_transcript <- calcNormFactors(dge_transcript)
+  
+cpm <- cpm(dge_transcript, log = FALSE)
+
+sqanti_table <- read.delim("/Volumes/sheynkman/projects/Mohi_MDS_LRP/02_sqanti/MDS_classification.txt", 
+                           header = TRUE, 
+                           sep = "\t")
+```
+
+Set up the sample specific experiment 
+```{r}
+# ------------------------------------------
+# Set up the two-condition comparison (WT vs Q157R)
+# ------------------------------------------
+
+# counts already loaded in the previous block
+# dge_transcript already created and filtered
+
+# Design matrix for group comparison
+design <- model.matrix(~ group)
+
+# Estimate dispersion
+dge_transcript <- estimateDisp(dge_transcript, design)
+
+# Fit the model
+fit <- glmQLFit(dge_transcript, design)
+
+# Perform quasi-likelihood F-test (Q157R vs WT)
+result <- glmQLFTest(fit, coef = 2)
+
+# View top differentially expressed transcripts
+topTags(result)
+
+deg_transcripts <- topTags(result, n = Inf)$table
+
+# Save DE results to output_table_subfolder
+write.table(deg_transcripts, 
+            file = file.path(output_table_subfolder, "transcript_DEG_results.txt"),
+            sep = "\t", 
+            quote = FALSE, 
+            row.names = TRUE)
+```
+
+Determine the top cases 
+
+```{r}
+# Get the top 500 differentially expressed transcripts
+tab <- as.data.frame(topTags(result, n = 500))
+tab
+```
+
+Determine how many of the transcripts are statistically significant via pvalue and fdr 
+```{r}
+tab_pval <- tab %>% dplyr::filter(PValue < 0.05)
+tab_pval
+```
+```{r}
+tab_fdr <- tab %>% dplyr::filter(FDR < 0.09) #chose this because it was the median when I used summary(tab$FDR)
+tab_fdr
+```
+So all 500 are stat significant 
+and when bumped to 2000 also remain statistically significant, but FDR is where things were filered down!
+
+How many genes does this represent? 
+```{r}
+# 1. Move rownames into a new column
+tab$isoform <- rownames(tab)
+
+# 2. Merge with SQANTI to get associated genes
+tab_merged <- left_join(tab, 
+                        sqanti_table %>% select(isoform, associated_gene), 
+                        by = "isoform")
+
+# 3. Count how many unique genes are represented
+length(unique(tab_merged$associated_gene))
+tab_merged
+```
+```{r}
+unique(tab_merged$associated_gene)
+```
+Make a pretty table of the output for the top 100 genes 
+```{r}
+unique_gene_names<- unique(tab_merged$associated_gene)
+top_gene_names_df <- data.frame(Gene_Name = head(unique_gene_names, 100))
+knitr::kable(top_gene_names_df)
+```
+
+```{r}
+# Calculate the number of rows needed for the 3-column table
+num_rows <- ceiling(length(unique_gene_names) / 5)
+
+# Reshape the gene names vector into a matrix with 3 columns
+gene_names_matrix <- matrix(unique_gene_names, ncol = 5, byrow = TRUE)
+gene_names_matrix <- gene_names_matrix[1:num_rows, ]  # Take the first num_rows rows
+
+# Create a data frame from the matrix
+top_gene_names_df <- as.data.frame(gene_names_matrix)
+
+# Display the data frame
+knitr::kable(top_gene_names_df, col.names = c("Gene_Name_1", "Gene_Name_2", "Gene_Name_3", "Gene_Name_4",  "Gene_Name_5"))
+```
+
+```{r}
+#write this to a file 
+write.table(tab_merged, file.path(output_table_subfolder, "transcripts_w_dynamic_via_spline_500_allsamples.txt"), sep = '\t', row.names = FALSE)
+```
+
+
+
+
+
+Finding the non-unique values in a df in r - postulated that these may be candidates of isoform switching events b/c if the same gene is expressed in multiple isoformx, it may be that the isoform is changing
+```{r}
+# Find non-unique rows based on 'id' column
+non_unique <- tab_merged[duplicated(tab_merged$associated_gene) | duplicated(tab_merged$associated_gene, fromLast = TRUE), ]
+
+# Show non-unique rows
+non_unique <- non_unique %>% arrange(associated_gene)
+non_unique
+```
+
+```{r}
+#write this to a file 
+write.table(tab_merged, file.path(output_table_subfolder, "transcripts_w_dynamic_via_spline_500.txt"), sep = '\t', row.names = FALSE)
+```
+
+
+```{r}
+write.table(non_unique, file.path(output_table_subfolder, "transcripts_w_dynamic_via_spline_500_nonunique_allsamples.txt"), sep = '\t', row.names = FALSE)
+```
+Set up next analysis
+```{r}
+# 1.1 Save all DE transcripts
+write.table(deg_transcripts, 
+            file = file.path(output_table_subfolder, "transcript_DEG_results_all.txt"), 
+            sep = "\t", quote = FALSE, row.names = TRUE)
+
+# 1.2 Save only FDR < 0.09 transcripts (filtered dynamic ones)
+deg_transcripts_filtered <- deg_transcripts %>% filter(FDR < 0.09)
+
+write.table(deg_transcripts_filtered, 
+            file = file.path(output_table_subfolder, "transcripts_w_dynamic_filtered.txt"), 
+            sep = "\t", quote = FALSE, row.names = TRUE)
+```

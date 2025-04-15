@@ -6,34 +6,34 @@ This project is comparing protein isoforms identified by long-read proteogenomic
 cd /project/sheynkman/projects/Mohi_MDS_LRP
 module load gcc/11.4.0 openmpi/4.1.4 python/3.11.4 miniforge/24.3.0-py3.11
 
-mkdir ./00_input_data/
-mkdir ./00_scripts/
+mkdir 00_input_data/
+mkdir 00_scripts/
 mkdir 01_isoseq
 mkdir 01_isoseq/merge
 mkdir 01_isoseq/cluster
 mkdir 01_isoseq/align
 mkdir 01_isoseq/collapse
-mkdir ./01_reference_tables/
-mkdir ./02_make_gencode_database/
-mkdir ./02_sqanti/
-mkdir ./03_filter_sqanti/
-mkdir ./04_CPAT/
-mkdir ./04_transcriptome_summary/
-mkdir ./05_orf_calling/
-mkdir ./06_refine_orf_database/
-mkdir ./07_make_cds_gtf/
-mkdir ./08_rename_cds_to_exon/
-mkdir ./09_sqanti_protein/
-mkdir ./10_5p_utr/
-mkdir ./11_protein_classification/
-mkdir ./12_protein_gene_rename/
-mkdir ./13_protein_filter/
-mkdir ./14_protein_hybrid_database/
-mkdir ./17_track_visualization/
-mkdir ./18_SUPPA/
-mkdir ./18_SUPPA/01_splice_events/
-mkdir ./19_LRP_summary/
-mkdir ./19_LRP_summary/edgeR/
+mkdir 01_reference_tables/
+mkdir 02_make_gencode_database/
+mkdir 02_sqanti/
+mkdir 03_filter_sqanti/
+mkdir 04_CPAT/
+mkdir 04_transcriptome_summary/
+mkdir 05_orf_calling/
+mkdir 06_refine_orf_database/
+mkdir 07_make_cds_gtf/
+mkdir 08_rename_cds_to_exon/
+mkdir 09_sqanti_protein/
+mkdir 10_5p_utr/
+mkdir 11_protein_classification/
+mkdir 12_protein_gene_rename/
+mkdir 13_protein_filter/
+mkdir 14_protein_hybrid_database/
+mkdir 17_track_visualization/
+mkdir 18_SUPPA/
+mkdir 18_SUPPA/01_splice_events/
+mkdir 19_LRP_summary/
+mkdir 19_LRP_summary/edgeR/
 
 gunzip /project/sheynkman/raw_data/PacBio/mohi_data/X504_Q157R_LK/PACBIO_DATA/XMOHI_20240510_R84050_PL9850-001_1-1-C01_IsoSeqX_bc06.flnc.fastq.gz
 gunzip /project/sheynkman/raw_data/PacBio/mohi_data/A258_Q157R_LK/PACBIO_DATA/XMOHI_20240510_R84050_PL9851-001_1-1-C01_IsoSeqX_bc07.flnc.fastq.gz
@@ -55,10 +55,15 @@ sbatch 00_scripts/01_make_reference_tables.sh
 ## 02 - SQANTI
 ```
 sbatch 00_scripts/02_sqanti.sh
+python 00_scripts/01_isoseq_gene_counts.py 01_isoseq/collapse/merged.collapsed.flnc_count.txt 01_isoseq/gene_level_counts.txt
 ```
 ## 02 - Make gencode database
 ```
 sbatch 00_scripts/02_make_gencode_database.sh
+```
+## 03 - Filter SQANTI
+```
+sbatch 00_scripts/03_filter_sqanti.sh
 ```
 ## 04 - CPAT
 ```
@@ -118,6 +123,11 @@ sbatch 00_scripts/17_track_visualization.sh
 sbatch 00_scripts/18_suppa.sh
 ```
 ## 19 - LRP Result Summary
+Need to figure out gene counts for edgeR...maybe need to apply a filter to the transcript database to only include isoforms taht have already been filtered through? But SUPPA uses post-SQANTI unfiltered data, so maybe not? <br />
+see https://doi.org/10.1093/nar/gkaf018 for TMM info <br />
 ```
 sbacth 00_scripts/19_LRP_summary.sh
+```
+
+look at numbers at each stage:
 ```

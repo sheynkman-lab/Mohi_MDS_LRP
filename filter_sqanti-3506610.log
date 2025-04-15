@@ -1,0 +1,7 @@
+Please use mpirun instead of srun to run your MPI job
+INFO:root:Filtering for only protein coding genes
+INFO:root:Filtering Intra PolyA
+INFO:root:Filtering RTS Stage
+INFO:root:Saving GTF
+INFO:root:Saving FASTA
+slurmstepd: error: *** JOB 3506610 ON udc-ba05-13c0 CANCELLED AT 2025-04-10T11:21:38 DUE TO TIME LIMIT ***

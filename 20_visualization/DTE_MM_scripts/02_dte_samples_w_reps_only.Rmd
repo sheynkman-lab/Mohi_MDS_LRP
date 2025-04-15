@@ -1,0 +1,176 @@
+---
+title: "spline testing w only with samples with replicates"
+author: "Madison Mehlferber"
+date: "2024-05-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# read in the needed packages 
+library(here)
+library(rtracklayer)
+library(dplyr)
+library(tidyverse)
+library(edgeR)
+library(splines)
+library(knitr)
+```
+
+# set up the needed directories 
+```{r}
+# Define the project root as the current working directory
+project_root <- '/Volumes/sheynkman/projects/Mohi_MDS_LRP/20_visualization/DTE_MM_scripts'
+
+# Define the path for the results folder inside the project root (on the same level as the scripts folder)
+results_folder <- file.path(project_root, "results")
+
+# Create the results folder if it doesn't exist
+if (!file.exists(results_folder)) {
+  dir.create(results_folder)
+}
+
+# Define the path for the "01_experiment" subfolder within results
+experiment_subfolder <- file.path(results_folder, "10_differential_transcript_expression")
+if (!file.exists(experiment_subfolder)) {
+  dir.create(experiment_subfolder)
+}
+
+# Define the subdirectories for plots and output_table inside "01_experiment"
+plots_subfolder <- file.path(experiment_subfolder, "plots")
+output_table_subfolder <- file.path(experiment_subfolder, "output_table")
+
+# Create the plots subfolder if it doesn't exist
+if (!file.exists(plots_subfolder)) {
+  dir.create(plots_subfolder)
+}
+
+# Create the output_table subfolder if it doesn't exist
+if (!file.exists(output_table_subfolder)) {
+  dir.create(output_table_subfolder)
+}
+
+# Print paths for debugging
+cat("Results folder path:", results_folder, "\n")
+cat("Experiment folder path:", experiment_subfolder, "\n")
+cat("Plots subfolder path:", plots_subfolder, "\n")
+cat("Output table subfolder path:", output_table_subfolder, "\n")
+
+```
+
+
+Read in the needed data files 
+```{r}
+counts <- read.csv("/Volumes/sheynkman/projects/Mohi_MDS_LRP/01_isoseq/collapse/merged.collapsed.flnc_count.txt", 
+                   header = TRUE, 
+                   row.names = 1)
+group <- factor(c("Q157R", "Q157R", "Q157R", "WT", "WT", "WT"))
+
+# Create DGEList and filter lowly expressed transcripts
+dge_transcript <- DGEList(counts = counts, group = group)
+dge_transcript <- dge_transcript[filterByExpr(dge_transcript), , keep.lib.sizes = FALSE]
+dge_transcript <- calcNormFactors(dge_transcript)
+
+cpm <- cpm(dge_transcript, log = FALSE)
+
+sqanti_table <- read.delim("/Volumes/sheynkman/projects/Mohi_MDS_LRP/02_sqanti/MDS_classification.txt", 
+                           header = TRUE, 
+                           sep = "\t")
+```
+
+
+Set up DGE analysis 
+```{r}
+# Design matrix for group comparison
+design <- model.matrix(~ group)
+
+# Estimate dispersion
+dge_transcript <- estimateDisp(dge_transcript, design)
+
+# Fit the model
+fit <- glmQLFit(dge_transcript, design)
+
+# Perform quasi-likelihood F-test (Q157R vs WT)
+result <- glmQLFTest(fit, coef = 2)
+
+# Summarize all differential expression results
+deg_transcripts <- topTags(result, n = Inf)$table
+write.table(deg_transcripts, 
+            file = file.path(output_table_subfolder, "transcript_DEG_results_2.txt"),
+            sep = "\t", quote = FALSE, row.names = TRUE)
+```
+
+Analysis of top DE transcripts
+```{r}
+# Get the top 500 DE transcripts
+tab <- as.data.frame(topTags(result, n = 500))
+
+# Filter by p-value and FDR
+tab_pval <- tab %>% filter(PValue < 0.01)
+tab_fdr  <- tab %>% filter(FDR < 0.09)
+
+```
+
+How many genes does this represent? 
+```{r}
+tab$isoform <- rownames(tab)  # Make sure isoform ID is a column
+tab_merged <- left_join(tab, sqanti_table %>% select(isoform, associated_gene, associated_transcript), 
+                        by = "isoform")
+
+# Show merged table
+tab_merged
+
+# Find unique genes
+unique_gene_names <- unique(tab_merged$associated_gene)
+```
+Make a pretty table of the output for the top 100 genes 
+```{r}
+top_gene_names_df <- data.frame(Gene_Name = head(unique_gene_names, 100))
+knitr::kable(top_gene_names_df)
+```
+
+```{r}
+# Reshape top genes into a 5-column pretty table
+num_rows <- ceiling(length(unique_gene_names) / 5)
+gene_names_matrix <- matrix(unique_gene_names, ncol = 5, byrow = TRUE)
+gene_names_matrix <- gene_names_matrix[1:num_rows, ]
+top_gene_names_df <- as.data.frame(gene_names_matrix)
+
+knitr::kable(top_gene_names_df, 
+             col.names = c("Gene_Name_1", "Gene_Name_2", "Gene_Name_3", "Gene_Name_4", "Gene_Name_5"))
+```
+
+Finding the non-unique values in a df in r - postulated that these may be candidates of isoform switching events 
+```{r}
+
+# ------------------------------------------
+# Find genes with multiple isoforms DE
+# ------------------------------------------
+
+non_unique <- tab_merged %>%
+  filter(duplicated(associated_gene) | duplicated(associated_gene, fromLast = TRUE)) %>%
+  arrange(associated_gene)
+
+# Show non-unique
+non_unique
+```
+
+```{r}
+write.table(tab_merged, 
+            file = file.path(output_table_subfolder, "transcripts_w_dynamic_via_group_comparison_top500.txt"), 
+            sep = '\t', 
+            row.names = FALSE)
+```
+
+
+```{r}
+
+write.table(non_unique, 
+            file = file.path(output_table_subfolder, "transcripts_w_2_or_more_transcripts_dynamic_top500.txt"), 
+            sep = '\t', 
+            row.names = FALSE)
+```
+
+
+
+
+

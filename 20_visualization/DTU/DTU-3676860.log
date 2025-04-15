@@ -1,0 +1,11 @@
+Please use mpirun instead of srun to run your MPI job
+To use your local R packages in RStudio, run:
+mkdir -p ~/R/{goolf,x86_64-pc-linux-gnu-library}
+cd ~/R/x86_64-pc-linux-gnu-library
+ln -s ../goolf/4.3
+Installing package into ‘/sfs/gpfs/tardis/home/yqy3cu/R/goolf/4.3’
+(as ‘lib’ is unspecified)
+Error in contrib.url(repos, type) : 
+  trying to use CRAN without setting a mirror
+Calls: install.packages -> startsWith -> contrib.url
+Execution halted

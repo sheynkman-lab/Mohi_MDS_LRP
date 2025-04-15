@@ -1,0 +1,12 @@
+Please use mpirun instead of srun to run your MPI job
+To use your local R packages in RStudio, run:
+mkdir -p ~/R/{goolf,x86_64-pc-linux-gnu-library}
+cd ~/R/x86_64-pc-linux-gnu-library
+ln -s ../goolf/4.4
+
+If you have a ~/.Renviron that sets R_LIBS_USER to a different version, e.g.:
+    R_LIBS_USER=~/R/goolf/4.3
+please remove that line. (Do NOT replace with 4.4.)
+Error: Bioconductor version '3.18' requires R version '4.3'; use `version = '3.20'`
+  with R version 4.4; see https://bioconductor.org/install
+Execution halted

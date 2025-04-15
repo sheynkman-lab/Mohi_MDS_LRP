@@ -1,0 +1,7 @@
+Lmod has detected the following error: These module(s) or extension(s) exist
+but cannot be loaded as requested: "R/4.4.1"
+   Try: "module spider R/4.4.1" to see how to load the module(s).
+
+
+
+/var/spool/slurm/slurmd/job3676629/slurm_script: line 17: Rscript: command not found

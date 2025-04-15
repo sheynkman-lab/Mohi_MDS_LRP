@@ -29,3 +29,8 @@ python 00_scripts/19_diff_transcript_expression.py \
     -s 19_LRP_summary/full_summary.tsv \
     -e 19_LRP_summary/edgeR/edgeR_transcript_results.csv \
     -o 19_LRP_summary/diff_transcript_expression.tsv
+
+python 00_scripts/19_diff_gene_expression.py \
+    -s 19_LRP_summary/full_summary.tsv \
+    -e 19_LRP_summary/edgeR/gene_DEG_results.txt \
+    -o 19_LRP_summary/diff_gene_expression.tsv

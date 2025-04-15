@@ -21,25 +21,25 @@ conda activate suppa
 cd /project/sheynkman/projects/Mohi_MDS_LRP
 
 #Generate splicing events. 
-#python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i 02_sqanti/MDS_corrected_PB_renamed.gtf -o 18_SUPPA/01_splice_events/all.events -e SE SS MX RI FL -f ioe
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py generateEvents -i 02_sqanti/MDS_corrected_PB_renamed.gtf -o 18_SUPPA/01_splice_events/all.events -e SE SS MX RI FL -f ioe
 
 #Put all IOE events in the same file.
-#cd 18_SUPPA/01_splice_events
+cd 18_SUPPA/01_splice_events
 
-#awk '
-#    FNR==1 && NR!=1 { while (/^<header>/) getline; }
-#    1 {print}
-#' *.ioe > all.events.ioe
+awk '
+    FNR==1 && NR!=1 { while (/^<header>/) getline; }
+    1 {print}
+' *.ioe > all.events.ioe
 
-#cd ../..
+cd ../..
 
 #Create expression table.
-#python 00_scripts/18_expression_table.py 02_sqanti/MDS_classification_PB_renamed.txt 18_SUPPA/expression_table.tsv
+python 00_scripts/18_expression_table.py 02_sqanti/MDS_classification_PB_renamed.txt 18_SUPPA/expression_table.tsv
 
 #Must remove first title column from expression table
 
 #Calculate PSI values.
-#python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerEvent --ioe-file 18_SUPPA/01_splice_events/all.events.ioe --expression-file 18_SUPPA/expression_table.tsv -o 18_SUPPA/combined_local
+python /project/sheynkman/programs/SUPPA-2.4/suppa.py psiPerEvent --ioe-file 18_SUPPA/01_splice_events/all.events.ioe --expression-file 18_SUPPA/expression_table.tsv -o 18_SUPPA/combined_local
 
 #Differential splicing. Split the PSI and TPM files between the two conditions (if comparing)
 Rscript 00_scripts/18_suppa_split_file.R 18_SUPPA/expression_table.tsv BioSample_1,BioSample_2,BioSample_3 BioSample_4,BioSample_5,BioSample_6 18_SUPPA/Q157R.tpm 18_SUPPA/WT.tpm -i
