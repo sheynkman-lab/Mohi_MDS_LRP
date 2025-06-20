@@ -1,4 +1,0 @@
-#database hg38
-#shortDesc Exons of isoforms in MDS PacBio CDS
-#padding 10
-/bin/sh: bedtools: command not found
